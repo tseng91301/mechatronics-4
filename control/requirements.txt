@@ -1,0 +1,16 @@
+# Mechatronics-4 Control Web & CLI Dependencies
+
+# Web 伺服器與非同步框架
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+websockets>=11.0
+
+# HTML 樣板引擎 (FastAPI Jinja2Templates)
+jinja2>=3.1.0
+
+# 資料模型驗證
+pydantic>=2.0.0
+
+# Arduino 序列埠通訊 (COM port / UART)
+pyserial>=3.5
+
