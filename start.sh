@@ -1,7 +1,7 @@
 cd ~/mediamtx && ./mediamtx &
 
 # New Terminal
-cd ~/mechatronics-4/records && ffmpeg -y -f v4l2 -video_size 640x480 -framerate 20 -i /dev/logi_camera \
+cd ~/mechatronics-4/records && ffmpeg -y -f v4l2 -video_size 640x360 -framerate 20 -i /dev/logi_camera \
   -c:v libx264 -preset ultrafast -tune zerolatency \
   -g 20 -bf 0 -b:v 800k -maxrate 800k -bufsize 400k \
   -pix_fmt yuv420p \
