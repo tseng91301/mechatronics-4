@@ -257,16 +257,55 @@ class ArduinoBridge:
         self.mock_mode = False
         self.is_connected = False
 
-    def send_packet(self, cmd: int, payload: bytes = b'', log_desc: str = "", quiet: bool = False):
-        packet = bytearray([START_BYTE, cmd])
-        packet.extend(payload)
-        packet.append(END_BYTE)
-        hex_str = ' '.join(f"{b:02X}" for b in packet)
+    def _notify_ultrasonic(self):
+        self.notify({
+            "type": "ultrasonic",
+            "front_mm": self.latest_data["front_mm"],
+            "front_cm": self.latest_data["front_cm"],
+            "right_mm": self.latest_data["right_mm"],
+            "right_cm": self.latest_data["right_cm"]
+        })
 
+    def get_initial_messages(self) -> List[dict]:
+        return [
+            {
+                "type": "status",
+                "connected": self.is_connected,
+                "mock_mode": self.mock_mode,
+                "port": self.port,
+                "baudrate": self.baudrate
+            },
+            {
+                "type": "ports",
+                "ports": self.get_ports()
+            },
+            {
+                "type": "ultrasonic",
+                "front_mm": self.latest_data["front_mm"],
+                "front_cm": self.latest_data["front_cm"],
+                "right_mm": self.latest_data["right_mm"],
+                "right_cm": self.latest_data["right_cm"]
+            },
+            {
+                "type": "imu",
+                "yaw": self.latest_data["yaw"],
+                "pitch": self.latest_data["pitch"],
+                "roll": self.latest_data["roll"],
+                "auto_correct": self.latest_data["auto_correct"]
+            },
+            {
+                "type": "relay",
+                "relay_id": 1,
+                "state": self.latest_data["relay_state"]
+            }
+        ]
+
+    def _write_raw(self, raw: bytes, log_desc: str = "", quiet: bool = False, is_ping_sim: bool = False):
+        hex_str = ' '.join(f"{b:02X}" for b in raw)
         if self.mock_mode:
             if not quiet:
-                self.log("TX", f"[模擬] {log_desc or f'發送指令 0x{cmd:02X}'}", hex_str)
-            if cmd == CMD_PING:
+                self.log("TX", f"[模擬] {log_desc}", hex_str)
+            if is_ping_sim:
                 time.sleep(0.05)
                 self.log("RX", "[模擬回應] Pong! Arduino 連線正常", "AA 00 55")
             return
@@ -278,28 +317,21 @@ class ArduinoBridge:
 
         with self.write_lock:
             try:
-                self.ser.write(packet)
+                self.ser.write(raw)
                 if not quiet:
-                    self.log("TX", log_desc or f"指令 0x{cmd:02X}", hex_str)
+                    self.log("TX", log_desc, hex_str)
             except Exception as e:
                 self.log("SYS", f"發送失敗: {e}", hex_str)
 
+    def send_packet(self, cmd: int, payload: bytes = b'', log_desc: str = "", quiet: bool = False):
+        packet = bytearray([START_BYTE, cmd])
+        packet.extend(payload)
+        packet.append(END_BYTE)
+        desc = log_desc or f"指令 0x{cmd:02X}"
+        self._write_raw(packet, desc, quiet=quiet, is_ping_sim=(cmd == CMD_PING))
+
     def send_raw_bytes(self, raw: bytes, log_desc: str = "直接發送原始 HEX"):
-        hex_str = ' '.join(f"{b:02X}" for b in raw)
-        if self.mock_mode:
-            self.log("TX", f"[模擬] {log_desc}", hex_str)
-            return
-
-        if not self.ser or not self.ser.is_open:
-            self.log("SYS", "警告：未連線，無法發送原始 HEX", hex_str)
-            return
-
-        with self.write_lock:
-            try:
-                self.ser.write(raw)
-                self.log("TX", log_desc, hex_str)
-            except Exception as e:
-                self.log("SYS", f"發送原始 HEX 失敗: {e}", hex_str)
+        self._write_raw(raw, log_desc)
 
     def send_dual_motor(self, turn: int, speed: int, is_heartbeat: bool = False):
         turn = max(-255, min(255, int(turn)))
@@ -434,64 +466,34 @@ class ArduinoBridge:
         elif cmd == CMD_ULTRASONIC_FRONT:
             if len(payload) >= 4:
                 dist_mm = struct.unpack('>i', payload[:4])[0]
-                dist_cm = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
                 self.latest_data["front_mm"] = dist_mm
-                self.latest_data["front_cm"] = dist_cm
+                self.latest_data["front_cm"] = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
                 self.latest_data["last_updated"] = time.time()
-
-                self.notify({
-                    "type": "ultrasonic",
-                    "front_mm": dist_mm,
-                    "front_cm": dist_cm,
-                    "right_mm": self.latest_data["right_mm"],
-                    "right_cm": self.latest_data["right_cm"]
-                })
+                self._notify_ultrasonic()
 
         elif cmd == CMD_ULTRASONIC_RIGHT:
             if len(payload) >= 4:
                 dist_mm = struct.unpack('>i', payload[:4])[0]
-                dist_cm = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
                 self.latest_data["right_mm"] = dist_mm
-                self.latest_data["right_cm"] = dist_cm
+                self.latest_data["right_cm"] = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
                 self.latest_data["last_updated"] = time.time()
-
-                self.notify({
-                    "type": "ultrasonic",
-                    "front_mm": self.latest_data["front_mm"],
-                    "front_cm": self.latest_data["front_cm"],
-                    "right_mm": dist_mm,
-                    "right_cm": dist_cm
-                })
+                self._notify_ultrasonic()
 
         elif cmd == CMD_ULTRASONIC:
             if len(payload) == 4:
                 dist_mm = struct.unpack('>i', payload)[0]
-                dist_cm = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
                 self.latest_data["front_mm"] = dist_mm
-                self.latest_data["front_cm"] = dist_cm
-                self.notify({
-                    "type": "ultrasonic",
-                    "front_mm": dist_mm,
-                    "front_cm": dist_cm,
-                    "right_mm": self.latest_data["right_mm"],
-                    "right_cm": self.latest_data["right_cm"]
-                })
+                self.latest_data["front_cm"] = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
+                self.latest_data["last_updated"] = time.time()
+                self._notify_ultrasonic()
             elif len(payload) == 5:
                 s_id, dist_mm = struct.unpack('>Bi', payload)
                 dist_cm = round(dist_mm / 10.0, 1) if dist_mm >= 0 else -1.0
-                if s_id == 0:
-                    self.latest_data["front_mm"] = dist_mm
-                    self.latest_data["front_cm"] = dist_cm
-                elif s_id == 1:
-                    self.latest_data["right_mm"] = dist_mm
-                    self.latest_data["right_cm"] = dist_cm
-                self.notify({
-                    "type": "ultrasonic",
-                    "front_mm": self.latest_data["front_mm"],
-                    "front_cm": self.latest_data["front_cm"],
-                    "right_mm": self.latest_data["right_mm"],
-                    "right_cm": self.latest_data["right_cm"]
-                })
+                prefix = "front" if s_id == 0 else "right"
+                self.latest_data[f"{prefix}_mm"] = dist_mm
+                self.latest_data[f"{prefix}_cm"] = dist_cm
+                self.latest_data["last_updated"] = time.time()
+                self._notify_ultrasonic()
 
         elif cmd == CMD_IMU_DATA:
             if len(payload) >= 7:
@@ -654,36 +656,8 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
 
     # 連線初始狀態推播
-    await websocket.send_json({
-        "type": "status",
-        "connected": bridge.is_connected,
-        "mock_mode": bridge.mock_mode,
-        "port": bridge.port,
-        "baudrate": bridge.baudrate
-    })
-    await websocket.send_json({
-        "type": "ports",
-        "ports": bridge.get_ports()
-    })
-    await websocket.send_json({
-        "type": "ultrasonic",
-        "front_mm": bridge.latest_data["front_mm"],
-        "front_cm": bridge.latest_data["front_cm"],
-        "right_mm": bridge.latest_data["right_mm"],
-        "right_cm": bridge.latest_data["right_cm"]
-    })
-    await websocket.send_json({
-        "type": "imu",
-        "yaw": bridge.latest_data["yaw"],
-        "pitch": bridge.latest_data["pitch"],
-        "roll": bridge.latest_data["roll"],
-        "auto_correct": bridge.latest_data["auto_correct"]
-    })
-    await websocket.send_json({
-        "type": "relay",
-        "relay_id": 1,
-        "state": bridge.latest_data["relay_state"]
-    })
+    for init_msg in bridge.get_initial_messages():
+        await websocket.send_json(init_msg)
 
     try:
         while True:

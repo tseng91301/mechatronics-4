@@ -16,30 +16,43 @@ except ImportError:
     print("[錯誤] 未安裝 pyserial 模組。請在命令提示字元執行: pip install pyserial")
     sys.exit(1)
 
-# 通訊協議常數 (與 connection.h 一致)
-START_BYTE = 0xAA
-END_BYTE   = 0x55
-
-# 控制與傳輸指令
-CMD_PING              = 0x00  # 長度: 0
-CMD_DUAL_MOTOR        = 0x01  # 長度: 4 (turn: int16, speed: int16)
-CMD_SINGLE_MOTOR      = 0x02  # 長度: 3 (motor_id: uint8, speed: int16)
-CMD_RELAY             = 0x03  # 長度: 2 (relay_id: uint8, state: uint8)
-CMD_SET_AUTO_CORRECT  = 0x04  # 長度: 1 (enable: uint8)
-CMD_RESET_IMU_YAW     = 0x05  # 長度: 0
-
-# Arduino -> 電腦 感測與訊息指令
-CMD_ULTRASONIC        = 0x10  # 4 bytes int32 (mm) 或 5 bytes (id + mm)
-CMD_ULTRASONIC_FRONT  = 0x11  # 長度: 4 (4 bytes int32, 毫米 mm)
-CMD_ULTRASONIC_RIGHT  = 0x12  # 長度: 4 (4 bytes int32, 毫米 mm)
-CMD_IMU_DATA          = 0x13  # 長度: 7 (yaw_x10: int16, pitch_x10: int16, roll_x10: int16, auto_correct: uint8)
-CMD_LOG_MSG           = 0x20  # 長度: 可變 (文字訊息)
-
-# 狀態機狀態定義
-STATE_WAIT_START = 0
-STATE_WAIT_CMD   = 1
-STATE_WAIT_DATA  = 2
-STATE_WAIT_END   = 3
+try:
+    from control.server import (
+        START_BYTE, END_BYTE,
+        CMD_PING, CMD_DUAL_MOTOR, CMD_SINGLE_MOTOR, CMD_RELAY,
+        CMD_SET_AUTO_CORRECT, CMD_RESET_IMU_YAW,
+        CMD_ULTRASONIC, CMD_ULTRASONIC_FRONT, CMD_ULTRASONIC_RIGHT,
+        CMD_IMU_DATA, CMD_LOG_MSG,
+        STATE_WAIT_START, STATE_WAIT_CMD, STATE_WAIT_DATA, STATE_WAIT_END
+    )
+except ImportError:
+    try:
+        from server import (
+            START_BYTE, END_BYTE,
+            CMD_PING, CMD_DUAL_MOTOR, CMD_SINGLE_MOTOR, CMD_RELAY,
+            CMD_SET_AUTO_CORRECT, CMD_RESET_IMU_YAW,
+            CMD_ULTRASONIC, CMD_ULTRASONIC_FRONT, CMD_ULTRASONIC_RIGHT,
+            CMD_IMU_DATA, CMD_LOG_MSG,
+            STATE_WAIT_START, STATE_WAIT_CMD, STATE_WAIT_DATA, STATE_WAIT_END
+        )
+    except ImportError:
+        START_BYTE = 0xAA
+        END_BYTE   = 0x55
+        CMD_PING              = 0x00
+        CMD_DUAL_MOTOR        = 0x01
+        CMD_SINGLE_MOTOR      = 0x02
+        CMD_RELAY             = 0x03
+        CMD_SET_AUTO_CORRECT  = 0x04
+        CMD_RESET_IMU_YAW     = 0x05
+        CMD_ULTRASONIC        = 0x10
+        CMD_ULTRASONIC_FRONT  = 0x11
+        CMD_ULTRASONIC_RIGHT  = 0x12
+        CMD_IMU_DATA          = 0x13
+        CMD_LOG_MSG           = 0x20
+        STATE_WAIT_START = 0
+        STATE_WAIT_CMD   = 1
+        STATE_WAIT_DATA  = 2
+        STATE_WAIT_END   = 3
 
 
 class ArduinoController:
