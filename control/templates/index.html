@@ -2708,7 +2708,10 @@
     let stickY = centerY;
     let isDragging = false;
     let lastSendTime = 0;
+    let desktopTurn = 0;
+    let desktopSpeed = 0;
     const SEND_INTERVAL_MS = 50; // 20Hz 頻率傳送，防鮑率塞車
+    const HEARTBEAT_INTERVAL_MS = 100; // 10Hz 心跳週期，固定不動時持續送出當前速度防止 Arduino 1000ms 超時煞停
 
     function drawJoystick() {
       ctx.clearRect(0, 0, width, height);
@@ -2787,6 +2790,8 @@
     function resetJoystick() {
       stickX = centerX;
       stickY = centerY;
+      desktopTurn = 0;
+      desktopSpeed = 0;
       drawJoystick();
       calculateAndEmitSpeed(0, 0, true);
     }
@@ -2808,6 +2813,8 @@
       // Turn: 逆時針 (左轉) 為正，順時針 (右轉) 為負。因此左拖 (normX < 0) -> turn > 0
       const turn = Math.round(-filterX * maxPower);
       const speed = Math.round(filterY * maxPower);
+      desktopTurn = turn;
+      desktopSpeed = speed;
 
       // 混控試算顯示: left = speed - turn, right = speed + turn
       let left = speed - turn;
@@ -2915,6 +2922,8 @@
 
     function applyKeyboardDrive() {
       if (keyState.space) {
+        desktopTurn = 0;
+        desktopSpeed = 0;
         resetJoystick();
         stopDpad();
         return;
@@ -2929,6 +2938,9 @@
       if (keyState.a && !keyState.d) trn = maxPower;  // 左轉
       if (keyState.d && !keyState.a) trn = -maxPower; // 右轉
 
+      desktopTurn = trn;
+      desktopSpeed = spd;
+
       // 虛擬更新搖桿位置視覺
       stickX = centerX - (trn / maxPower) * (maxRadius * 0.8);
       stickY = centerY - (spd / maxPower) * (maxRadius * 0.8);
@@ -2939,6 +2951,7 @@
       statLeft.innerText = Math.max(-255, Math.min(255, spd - trn));
       statRight.innerText = Math.max(-255, Math.min(255, spd + trn));
 
+      lastSendTime = performance.now();
       wsSend({
         action: "dual_motor",
         turn: trn,
@@ -3706,12 +3719,58 @@
       }
     });
 
+    // ==============================================
+    // 搖桿心跳保活機制 (Heartbeat Keep-Alive)
+    // 當固定搖桿數值不動時，每 100ms 定期重發當前速度給 Arduino，防止 1000ms 超時安全煞停
+    // ==============================================
+    function setupHeartbeatTimer() {
+      setInterval(() => {
+        const now = performance.now();
+
+        if (isDroneViewOpen) {
+          // --- 1. 手機/平板無人機雙搖桿模式心跳 ---
+          const isTouching = (leftTouchId !== null || rightTouchId !== null || isLeftPointerDown || isRightPointerDown);
+          const isMoving = (droneSpeed !== 0 || droneTurn !== 0);
+
+          if (isMoving || isTouching) {
+            // 若距上次指令發送已超過心跳週期 (100ms)，主動補發心跳以維持 Arduino 運轉
+            if (now - droneLastSendTime >= HEARTBEAT_INTERVAL_MS) {
+              droneLastSendTime = now;
+              wsSend({
+                action: "dual_motor",
+                turn: droneTurn,
+                speed: droneSpeed,
+                heartbeat: true
+              });
+            }
+          }
+        } else {
+          // --- 2. 桌面儀表板 (虛擬單搖桿 / 方向鍵盤) 心跳 ---
+          const isMoving = (desktopSpeed !== 0 || desktopTurn !== 0);
+          const isHoldingKey = (keyState.w || keyState.s || keyState.a || keyState.d);
+
+          if (isMoving || isDragging || isHoldingKey) {
+            if (now - lastSendTime >= HEARTBEAT_INTERVAL_MS) {
+              lastSendTime = now;
+              wsSend({
+                action: "dual_motor",
+                turn: desktopTurn,
+                speed: desktopSpeed,
+                heartbeat: true
+              });
+            }
+          }
+        }
+      }, 40);
+    }
+
     // 啟動 WebSocket、方向按鈕與影像監控事件
     window.addEventListener('load', () => {
       initWebSocket();
       setupDpadEvents();
       initCameraStream();
       setupDroneStickEvents();
+      setupHeartbeatTimer();
     });
   </script>
 </body>

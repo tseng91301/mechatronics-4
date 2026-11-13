@@ -257,27 +257,30 @@ class ArduinoBridge:
         self.mock_mode = False
         self.is_connected = False
 
-    def send_packet(self, cmd: int, payload: bytes = b'', log_desc: str = ""):
+    def send_packet(self, cmd: int, payload: bytes = b'', log_desc: str = "", quiet: bool = False):
         packet = bytearray([START_BYTE, cmd])
         packet.extend(payload)
         packet.append(END_BYTE)
         hex_str = ' '.join(f"{b:02X}" for b in packet)
 
         if self.mock_mode:
-            self.log("TX", f"[模擬] {log_desc or f'發送指令 0x{cmd:02X}'}", hex_str)
+            if not quiet:
+                self.log("TX", f"[模擬] {log_desc or f'發送指令 0x{cmd:02X}'}", hex_str)
             if cmd == CMD_PING:
                 time.sleep(0.05)
                 self.log("RX", "[模擬回應] Pong! Arduino 連線正常", "AA 00 55")
             return
 
         if not self.ser or not self.ser.is_open:
-            self.log("SYS", "警告：未連線，指令未發出", hex_str)
+            if not quiet:
+                self.log("SYS", "警告：未連線，指令未發出", hex_str)
             return
 
         with self.write_lock:
             try:
                 self.ser.write(packet)
-                self.log("TX", log_desc or f"指令 0x{cmd:02X}", hex_str)
+                if not quiet:
+                    self.log("TX", log_desc or f"指令 0x{cmd:02X}", hex_str)
             except Exception as e:
                 self.log("SYS", f"發送失敗: {e}", hex_str)
 
@@ -298,14 +301,20 @@ class ArduinoBridge:
             except Exception as e:
                 self.log("SYS", f"發送原始 HEX 失敗: {e}", hex_str)
 
-    def send_dual_motor(self, turn: int, speed: int):
+    def send_dual_motor(self, turn: int, speed: int, is_heartbeat: bool = False):
         turn = max(-255, min(255, int(turn)))
         speed = max(-255, min(255, int(speed)))
         payload = struct.pack('>hh', turn, speed)
         turn_str = "直行" if turn == 0 else f"{'左轉' if turn > 0 else '右轉'} ({abs(turn)})"
         spd_str = "停止" if speed == 0 else f"{'前進' if speed > 0 else '後退'} ({abs(speed)})"
         desc = f"雙馬達操控: 轉向={turn} ({turn_str}), 速度={speed} ({spd_str})"
-        self.send_packet(CMD_DUAL_MOTOR, payload, desc)
+
+        # 若為重複心跳且數值未變，靜默發送至序列埠維持 Arduino 運轉，避免 Web 日誌刷屏
+        is_repeat = hasattr(self, '_last_drive') and self._last_drive == (turn, speed)
+        quiet = is_heartbeat or is_repeat
+        self._last_drive = (turn, speed)
+
+        self.send_packet(CMD_DUAL_MOTOR, payload, desc, quiet=quiet)
 
     def send_single_motor(self, motor_id: int, speed: int):
         motor_id = int(motor_id)
@@ -684,7 +693,8 @@ async def websocket_endpoint(websocket: WebSocket):
             if action == "dual_motor":
                 turn = int(data.get("turn", 0))
                 speed = int(data.get("speed", 0))
-                bridge.send_dual_motor(turn, speed)
+                is_heartbeat = bool(data.get("heartbeat", False))
+                bridge.send_dual_motor(turn, speed, is_heartbeat=is_heartbeat)
 
             elif action == "single_motor":
                 motor_id = int(data.get("motor_id", 0))
