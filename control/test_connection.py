@@ -25,11 +25,14 @@ CMD_PING              = 0x00  # 長度: 0
 CMD_DUAL_MOTOR        = 0x01  # 長度: 4 (turn: int16, speed: int16)
 CMD_SINGLE_MOTOR      = 0x02  # 長度: 3 (motor_id: uint8, speed: int16)
 CMD_RELAY             = 0x03  # 長度: 2 (relay_id: uint8, state: uint8)
+CMD_SET_AUTO_CORRECT  = 0x04  # 長度: 1 (enable: uint8)
+CMD_RESET_IMU_YAW     = 0x05  # 長度: 0
 
 # Arduino -> 電腦 感測與訊息指令
 CMD_ULTRASONIC        = 0x10  # 4 bytes int32 (mm) 或 5 bytes (id + mm)
 CMD_ULTRASONIC_FRONT  = 0x11  # 長度: 4 (4 bytes int32, 毫米 mm)
 CMD_ULTRASONIC_RIGHT  = 0x12  # 長度: 4 (4 bytes int32, 毫米 mm)
+CMD_IMU_DATA          = 0x13  # 長度: 7 (yaw_x10: int16, pitch_x10: int16, roll_x10: int16, auto_correct: uint8)
 CMD_LOG_MSG           = 0x20  # 長度: 可變 (文字訊息)
 
 # 狀態機狀態定義
@@ -69,8 +72,11 @@ class ArduinoController:
             CMD_DUAL_MOTOR: 4,
             CMD_SINGLE_MOTOR: 3,
             CMD_RELAY: 2,
+            CMD_SET_AUTO_CORRECT: 1,
+            CMD_RESET_IMU_YAW: 0,
             CMD_ULTRASONIC_FRONT: 4,
             CMD_ULTRASONIC_RIGHT: 4,
+            CMD_IMU_DATA: 7,
         }
 
     def connect(self):
@@ -244,6 +250,15 @@ class ArduinoController:
                 name = "前方" if sensor_id == 0 else "右方" if sensor_id == 1 else f"ID {sensor_id}"
                 if self.print_ultrasonic:
                     print(f"<- [{name}超音波] 距離: {dist_mm} mm ({dist_mm / 10.0:.1f} cm)")
+
+        elif cmd == CMD_IMU_DATA:
+            if len(payload) >= 7:
+                y10, p10, r10, ac = struct.unpack('>hhhB', payload[:7])
+                yaw = y10 / 10.0
+                pitch = p10 / 10.0
+                roll = r10 / 10.0
+                if self.print_ultrasonic:
+                    print(f"<- [IMU 姿態] Yaw(朝向): {yaw:.1f}° | Pitch: {pitch:.1f}° | Roll: {roll:.1f}° | 自動校正: {'ON' if ac else 'OFF'}")
 
         elif cmd == CMD_LOG_MSG:
             msg = payload.decode('utf-8', errors='ignore')

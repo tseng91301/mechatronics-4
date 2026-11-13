@@ -824,9 +824,11 @@
       0% {
         box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
       }
+
       70% {
         box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
       }
+
       100% {
         box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
       }
@@ -977,6 +979,424 @@
       flex-direction: column;
       gap: 1.25rem;
     }
+
+    /* ============================================== */
+    /* 🧭 IMU 姿態與航向儀卡片樣式                    */
+    /* ============================================== */
+    .imu-compass-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 0;
+    }
+
+    .compass-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #imuCompassSvg {
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.2));
+    }
+
+    .compass-needle {
+      transform-origin: 80px 80px;
+      transition: transform 0.12s ease-out;
+    }
+
+    .imu-data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      width: 100%;
+      margin: 0.75rem 0 0.5rem;
+    }
+
+    .imu-stat-tile {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .imu-stat-tile .tile-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .imu-stat-tile .tile-val {
+      font-family: monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-top: 2px;
+    }
+
+    .imu-cardinal-badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent-blue);
+      margin-top: 0.35rem;
+    }
+
+    .auto-correct-banner {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      width: 100%;
+    }
+
+    .toggle-switch-btn {
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid #475569;
+      background: #1e293b;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .toggle-switch-btn.active {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: #22c55e;
+      color: #86efac;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+    }
+
+    /* ============================================== */
+    /* 📱 手機/平板無人機雙搖桿全螢幕控制介面樣式     */
+    /* ============================================== */
+    .drone-controller-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #060913;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .drone-hud-header {
+      height: 48px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      backdrop-filter: blur(8px);
+    }
+
+    .drone-hud-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--accent-blue);
+      letter-spacing: 0.5px;
+    }
+
+    .drone-hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .drone-main-stage {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      overflow: hidden;
+      padding: 0.5rem;
+      gap: 0.5rem;
+    }
+
+    /* 左右雙搖桿欄位 */
+    .drone-stick-column {
+      width: 210px;
+      flex-shrink: 0;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 0.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .stick-label-badge {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 90%;
+      background: #1e293b;
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .stick-val {
+      font-family: monospace;
+      color: var(--accent-blue);
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .drone-stick-zone {
+      position: relative;
+      touch-action: none;
+      user-select: none;
+      margin: 0.35rem 0;
+    }
+
+    .stick-hint {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 0.4rem;
+      line-height: 1.2;
+    }
+
+    /* 中央視訊與操作欄 */
+    .drone-center-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.5rem;
+      overflow: hidden;
+    }
+
+    .drone-fpv-wrapper {
+      position: relative;
+      flex: 1;
+      min-height: 180px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #1e293b;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    }
+
+    .drone-fpv-wrapper .camera-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* 視訊上層 HUD */
+    .drone-fpv-hud-top {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .drone-hud-compass-chip {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 20px;
+      padding: 0.25rem 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .drone-hud-sensor-chips {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .hud-chip {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      backdrop-filter: blur(4px);
+    }
+
+    .hud-chip strong {
+      font-family: monospace;
+      color: var(--text-main);
+    }
+
+    .hud-chip.danger {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+    }
+
+    .hud-chip.danger strong {
+      color: #ef4444;
+    }
+
+    /* 中央核心操作控制列 (包含繼電器) */
+    .drone-center-controls {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+
+    /* 💡 大型高科技感繼電器開關按鈕 */
+    .relay-power-btn {
+      flex: 1;
+      max-width: 260px;
+      height: 48px;
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      user-select: none;
+    }
+
+    .relay-power-btn:active {
+      transform: scale(0.97);
+    }
+
+    .relay-power-btn.active {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: #22c55e;
+      color: #86efac;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+    }
+
+    .relay-power-btn.active .relay-power-icon svg {
+      stroke: #22c55e;
+      filter: drop-shadow(0 0 4px #22c55e);
+    }
+
+    .relay-power-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .relay-power-text {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.2;
+    }
+
+    .relay-title {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .relay-status-text {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .drone-sub-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .drone-power-limiter {
+      display: flex;
+      align-items: center;
+      background: #1e293b;
+      border-radius: 6px;
+      padding: 2px 4px;
+      gap: 3px;
+      border: 1px solid var(--card-border);
+    }
+
+    .drone-pwr-chip {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .drone-pwr-chip.active {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    @media (orientation: portrait) and (max-width: 900px) {
+      .drone-main-stage {
+        flex-direction: column;
+      }
+
+      .drone-stick-column {
+        width: 100%;
+        height: 160px;
+      }
+    }
   </style>
 </head>
 
@@ -1017,6 +1437,11 @@
         ✨ 模擬模式
       </button>
 
+      <button id="openDroneViewBtn" class="btn btn-primary" onclick="openDroneMode()" title="切換為手機/平板雙搖桿無人機駕駛介面"
+        style="background: linear-gradient(135deg, #0284c7, #7e22ce); border: 1px solid #38bdf8;">
+        📱 雙搖桿手把模式
+      </button>
+
       <div id="connStatus" class="status-badge">
         <span class="status-dot"></span>
         <span id="connStatusText">未連線</span>
@@ -1031,6 +1456,9 @@
     </button>
     <button class="tab-btn" data-tab="tab-advanced">
       ⚙️ 進階控制 (單馬達 / HEX)
+    </button>
+    <button class="tab-btn" onclick="openDroneMode()" style="color:#c084fc;">
+      📱 平板雙搖桿駕駛模式 ↗
     </button>
   </nav>
 
@@ -1065,7 +1493,8 @@
               <button id="fullscreenVideoBtn" class="btn btn-xs" title="全螢幕顯示">
                 ⛶ 全螢幕
               </button>
-              <a id="openStreamLink" href="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0" target="_blank" class="btn btn-xs" title="在新分頁獨立開啟">
+              <a id="openStreamLink" href="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0"
+                target="_blank" class="btn btn-xs" title="在新分頁獨立開啟">
                 ↗ 另開
               </a>
             </div>
@@ -1093,13 +1522,9 @@
 
           <!-- 串流影像播放器容器 -->
           <div class="video-container" id="videoContainer">
-            <iframe
-              id="cameraIframe"
-              class="camera-iframe"
+            <iframe id="cameraIframe" class="camera-iframe"
               src="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowfullscreen
-              loading="eager"
+              allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="eager"
               title="MediaMTX WebRTC 實時影像串流">
             </iframe>
           </div>
@@ -1215,9 +1640,9 @@
         </div>
       </div>
 
-      <!-- 第二列：車輛 2D 動態雷達視圖 & 超音波感測器 (前方與右方) -->
-      <div class="grid-2">
-        <!-- 車輛 2D 動態雷達視圖 -->
+      <!-- 第二列：車輛 2D 動態雷達視圖、IMU 姿態與航向儀、超音波感測器 (3 欄佈局) -->
+      <div class="grid-3">
+        <!-- 1. 車輛 2D 動態雷達視圖 -->
         <div class="card">
           <div class="card-title">
             <span>🚗 車輛俯視動態探測雷達</span>
@@ -1247,24 +1672,98 @@
               <text id="rightBeamText" x="250" y="134" fill="#a855f7" font-size="11" text-anchor="start"
                 font-family="monospace">-- cm</text>
 
-              <!-- 車體底盤 -->
-              <rect x="80" y="70" width="80" height="120" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2" />
-              <rect x="90" y="80" width="60" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
+              <!-- 車體底盤 (隨偏航角 Yaw 平滑旋轉) -->
+              <g id="radarCarRotator" transform="rotate(0 120 130)">
+                <rect x="80" y="70" width="80" height="120" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2" />
+                <rect x="90" y="80" width="60" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
 
-              <!-- 車輪 (左輪 Pin 9/10, 右輪 Pin 3/11) -->
-              <rect x="68" y="85" width="10" height="30" rx="3" fill="#64748b" />
-              <rect x="162" y="85" width="10" height="30" rx="3" fill="#64748b" />
-              <rect x="68" y="145" width="10" height="30" rx="3" fill="#64748b" />
-              <rect x="162" y="145" width="10" height="30" rx="3" fill="#64748b" />
+                <!-- 車輪 (左輪 Pin 9/10, 右輪 Pin 3/11) -->
+                <rect x="68" y="85" width="10" height="30" rx="3" fill="#64748b" />
+                <rect x="162" y="85" width="10" height="30" rx="3" fill="#64748b" />
+                <rect x="68" y="145" width="10" height="30" rx="3" fill="#64748b" />
+                <rect x="162" y="145" width="10" height="30" rx="3" fill="#64748b" />
 
-              <!-- 車頭箭頭指示 -->
-              <polygon points="120,85 110,100 130,100" fill="#38bdf8" />
-              <text x="120" y="145" fill="#94a3b8" font-size="10" text-anchor="middle">ROBOT</text>
+                <!-- 車頭箭頭指示 -->
+                <polygon points="120,85 110,100 130,100" fill="#38bdf8" />
+                <text x="120" y="145" fill="#94a3b8" font-size="10" text-anchor="middle">ROBOT</text>
+              </g>
             </svg>
           </div>
         </div>
 
-        <!-- 超音波數值即時監控卡片 (前方與右方垂直並列) -->
+        <!-- 2. 🧭 MPU-6050 姿態與航向儀 -->
+        <div class="card">
+          <div class="card-title">
+            <span>🧭 MPU-6050 姿態航向儀</span>
+            <button id="resetYawBtn" class="btn btn-xs" onclick="resetYawHeading()" title="將目前方向設為基準 0 度">
+              🎯 朝向歸零
+            </button>
+          </div>
+
+          <div class="imu-compass-box">
+            <!-- 360° 羅盤儀 (SVG) -->
+            <div class="compass-container">
+              <svg id="imuCompassSvg" width="145" height="145" viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="74" fill="#0f172a" stroke="#334155" stroke-width="2" />
+                <circle cx="80" cy="80" r="62" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="3 3" />
+                <circle cx="80" cy="80" r="50" fill="none" stroke="#1e293b" stroke-width="1" />
+
+                <!-- 八方位刻度文字 -->
+                <g id="compassRose">
+                  <text x="80" y="24" fill="#ef4444" font-size="12" font-weight="800" text-anchor="middle">N</text>
+                  <text x="142" y="84" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">E</text>
+                  <text x="80" y="146" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">S</text>
+                  <text x="18" y="84" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">W</text>
+                  <line x1="80" y1="26" x2="80" y2="33" stroke="#ef4444" stroke-width="2" />
+                  <line x1="80" y1="127" x2="80" y2="134" stroke="#94a3b8" stroke-width="2" />
+                  <line x1="26" y1="80" x2="33" y2="80" stroke="#94a3b8" stroke-width="2" />
+                  <line x1="127" y1="80" x2="134" y2="80" stroke="#94a3b8" stroke-width="2" />
+                </g>
+
+                <!-- 羅盤指針 (隨 Yaw 角度平滑旋轉) -->
+                <g id="compassNeedle" class="compass-needle" transform="rotate(0 80 80)">
+                  <polygon points="80,32 74,80 86,80" fill="#ef4444" />
+                  <polygon points="80,128 74,80 86,80" fill="#475569" />
+                  <circle cx="80" cy="80" r="7" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
+                  <circle cx="80" cy="80" r="3" fill="#38bdf8" />
+                </g>
+              </svg>
+            </div>
+
+            <!-- 朝向大型度數與方位標籤 -->
+            <div style="display:flex; align-items:baseline; gap:0.4rem; margin-top:0.4rem;">
+              <span id="imuYawDisplay"
+                style="font-size:2.2rem; font-weight:800; font-family:monospace; color:var(--accent-blue); line-height:1;">0.0°</span>
+              <span id="imuCardinalText" class="imu-cardinal-badge">正北 (N)</span>
+            </div>
+          </div>
+
+          <!-- 姿態 Pitch / Roll 數據網格 -->
+          <div class="imu-data-grid">
+            <div class="imu-stat-tile">
+              <span class="tile-title">俯仰 (Pitch)</span>
+              <span id="imuPitchDisplay" class="tile-val">0.0°</span>
+            </div>
+            <div class="imu-stat-tile">
+              <span class="tile-title">滾轉 (Roll)</span>
+              <span id="imuRollDisplay" class="tile-val">0.0°</span>
+            </div>
+          </div>
+
+          <!-- 🤖 直線自動偏航校正開關列 -->
+          <div class="auto-correct-banner">
+            <div style="display:flex; flex-direction:column;">
+              <span style="font-weight:600; font-size:0.85rem; color:var(--text-main);">🤖 直線自動校正</span>
+              <span style="font-size:0.72rem; color:var(--text-muted);">走直線依陀螺儀變化微調航向</span>
+            </div>
+            <button id="autoCorrectToggleBtn" class="toggle-switch-btn" onclick="toggleAutoCorrect()">
+              <span class="status-dot"></span>
+              <span id="autoCorrectBtnText">OFF 關閉</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. 超音波數值即時監控卡片 (前方與右方垂直並列) -->
         <div class="sensor-column">
           <!-- 前方超音波 -->
           <div class="card sensor-card front">
@@ -1442,6 +1941,146 @@
     </section>
   </main>
 
+  <!-- ============================================== -->
+  <!-- 📱 手機/平板無人機雙搖桿全螢幕控制介面 (Drone Controller) -->
+  <!-- ============================================== -->
+  <div id="droneControllerView" class="drone-controller-container" style="display:none;">
+    <!-- 頂部 HUD 工具列 -->
+    <div class="drone-hud-header">
+      <div class="drone-hud-brand">
+        <span class="live-pulse"></span>
+        <span>🎮 DRONE FPV CONTROLLER</span>
+        <div id="droneConnStatus" class="status-badge" style="padding:0.15rem 0.5rem; font-size:0.75rem;">
+          <span class="status-dot"></span>
+          <span id="droneConnText">未連線</span>
+        </div>
+      </div>
+      <div class="drone-hud-actions">
+        <!-- 🧭 直線自動校正開關 -->
+        <button id="droneAutoCorrectToggleBtn" class="toggle-switch-btn" onclick="toggleAutoCorrect()"
+          title="開關直線航向自動校正">
+          <span class="status-dot"></span>
+          <span>直線校正: <strong id="droneAutoCorrectStatus">OFF</strong></span>
+        </button>
+        <!-- 🎯 朝向歸零 -->
+        <button class="btn btn-xs" onclick="resetYawHeading()" title="朝向角度歸零為 0°">
+          🎯 歸零 0°
+        </button>
+        <!-- ⛶ 全螢幕切換 -->
+        <button class="btn btn-xs" onclick="toggleDroneFullscreen()" title="切換瀏覽器全螢幕">
+          ⛶ 全螢幕
+        </button>
+        <!-- ✕ 返回桌面儀表板 -->
+        <button class="btn btn-danger btn-xs" onclick="exitDroneMode()">
+          ✕ 返回儀表板
+        </button>
+      </div>
+    </div>
+
+    <!-- 主控操作區域 (左搖桿 | 中間畫面+繼電器 | 右搖桿) -->
+    <div class="drone-main-stage">
+
+      <!-- 🚀 左搖桿：前進 / 後退 (Throttle / 速度) -->
+      <div class="drone-stick-column left-stick-column">
+        <div class="stick-label-badge">
+          <span>🚀 速度 (Speed)</span>
+          <span id="leftStickSpeedVal" class="stick-val">0</span>
+        </div>
+        <div class="drone-stick-zone" id="leftStickZone">
+          <canvas id="leftStickCanvas" width="190" height="190"></canvas>
+        </div>
+        <div class="stick-hint">
+          推桿前進 / 後退<br>
+          <span style="color:var(--text-muted); font-size:0.68rem;">放手自動彈回煞停</span>
+        </div>
+      </div>
+
+      <!-- 📹 中間區域：實時影像串流 + HUD + 繼電器控制開關 -->
+      <div class="drone-center-column">
+
+        <!-- 視訊畫面容器 -->
+        <div class="drone-fpv-wrapper" id="droneFpvWrapper">
+          <iframe id="droneCameraIframe" class="camera-iframe" src="" allow="autoplay; fullscreen"
+            allowfullscreen></iframe>
+
+          <!-- 畫面頂部浮動 HUD -->
+          <div class="drone-fpv-hud-top">
+            <!-- 羅盤朝向 HUD -->
+            <div class="drone-hud-compass-chip">
+              <span>🧭 朝向:</span>
+              <strong id="droneHudYawText" style="color:var(--accent-blue);">0.0°</strong>
+              <span id="droneHudCardinalText" style="color:#94a3b8; font-size:0.75rem;">(N)</span>
+            </div>
+
+            <!-- 超音波距離 HUD 膠囊 -->
+            <div class="drone-hud-sensor-chips">
+              <div id="droneFrontChip" class="hud-chip">
+                <span>前:</span>
+                <strong id="droneFrontCmText">--.-</strong> cm
+              </div>
+              <div id="droneRightChip" class="hud-chip">
+                <span>右:</span>
+                <strong id="droneRightCmText">--.-</strong> cm
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 畫面正下方核心操作列：繼電器開關 + 動力檔位 + 急停 -->
+        <div class="drone-center-controls">
+
+          <!-- 💡 核心重點：大型繼電器啟閉開關 -->
+          <button id="droneRelayBtn" class="relay-power-btn" onclick="toggleRelay()">
+            <div class="relay-power-icon">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2v10M18.36 5.64a9 9 0 1 1-12.73 0" stroke-linecap="round" />
+              </svg>
+            </div>
+            <div class="relay-power-text">
+              <span class="relay-title">繼電器開關 (吸塵馬達)</span>
+              <span id="droneRelayStatusLabel" class="relay-status-text">OFF 關閉</span>
+            </div>
+          </button>
+
+          <!-- 動力限制器與緊急停止按鈕 -->
+          <div class="drone-sub-actions">
+            <div class="drone-power-limiter">
+              <span style="font-size:0.75rem; color:var(--text-muted); margin-right:2px;">動力:</span>
+              <button class="drone-pwr-chip" onclick="setDroneMaxPower(50, this)">20%</button>
+              <button class="drone-pwr-chip active" onclick="setDroneMaxPower(100, this)">40%</button>
+              <button class="drone-pwr-chip" onclick="setDroneMaxPower(150, this)">60%</button>
+              <button class="drone-pwr-chip" onclick="setDroneMaxPower(200, this)">80%</button>
+              <button class="drone-pwr-chip" onclick="setDroneMaxPower(255, this)">100%</button>
+            </div>
+
+            <button class="btn btn-danger btn-xs" onclick="droneEmergencyReset()"
+              style="height:36px; padding:0 0.8rem; font-weight:700;" title="斷開 Arduino 序列埠並重新連線 (重啟硬體復位)">
+              🔄 斷開重連
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 🔄 右搖桿：左轉 / 右轉 (Steering / 轉向) -->
+      <div class="drone-stick-column right-stick-column">
+        <div class="stick-label-badge">
+          <span>🔄 轉向 (Turn)</span>
+          <span id="rightStickTurnVal" class="stick-val">0</span>
+        </div>
+        <div class="drone-stick-zone" id="rightStickZone">
+          <canvas id="rightStickCanvas" width="190" height="190"></canvas>
+        </div>
+        <div class="stick-hint">
+          推桿左轉 / 右轉<br>
+          <span style="color:var(--text-muted); font-size:0.68rem;">放手自動回中直行</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <script>
     // ==============================================
     // 全域變數與 WebSocket 模組
@@ -1451,6 +2090,15 @@
     let isMockMode = false;
     let currentPort = "";
 
+    // IMU 姿態與直線校正狀態
+    let currentYaw = 0.0;
+    let currentPitch = 0.0;
+    let currentRoll = 0.0;
+    let isAutoCorrectEnabled = false;
+    let currentRelayState = false;
+    let isDroneViewOpen = false;
+    let droneMaxPower = 200;
+
     // DOM 元素
     const portSelect = document.getElementById('portSelect');
     const baudSelect = document.getElementById('baudSelect');
@@ -1459,6 +2107,37 @@
     const mockBtn = document.getElementById('mockBtn');
     const connStatus = document.getElementById('connStatus');
     const connStatusText = document.getElementById('connStatusText');
+
+    // IMU DOM 元素
+    const imuYawDisplay = document.getElementById('imuYawDisplay');
+    const imuCardinalText = document.getElementById('imuCardinalText');
+    const imuPitchDisplay = document.getElementById('imuPitchDisplay');
+    const imuRollDisplay = document.getElementById('imuRollDisplay');
+    const compassNeedle = document.getElementById('compassNeedle');
+    const autoCorrectToggleBtn = document.getElementById('autoCorrectToggleBtn');
+    const autoCorrectBtnText = document.getElementById('autoCorrectBtnText');
+    const radarCarRotator = document.getElementById('radarCarRotator');
+
+    // 手機/平板無人機手把模式 DOM 元素
+    const droneControllerView = document.getElementById('droneControllerView');
+    const droneConnStatus = document.getElementById('droneConnStatus');
+    const droneConnText = document.getElementById('droneConnText');
+    const droneAutoCorrectToggleBtn = document.getElementById('droneAutoCorrectToggleBtn');
+    const droneAutoCorrectStatus = document.getElementById('droneAutoCorrectStatus');
+    const droneCameraIframe = document.getElementById('droneCameraIframe');
+    const droneHudYawText = document.getElementById('droneHudYawText');
+    const droneHudCardinalText = document.getElementById('droneHudCardinalText');
+    const droneFrontCmText = document.getElementById('droneFrontCmText');
+    const droneRightCmText = document.getElementById('droneRightCmText');
+    const droneFrontChip = document.getElementById('droneFrontChip');
+    const droneRightChip = document.getElementById('droneRightChip');
+    const droneRelayBtn = document.getElementById('droneRelayBtn');
+    const droneRelayStatusLabel = document.getElementById('droneRelayStatusLabel');
+
+    const leftStickCanvas = document.getElementById('leftStickCanvas');
+    const rightStickCanvas = document.getElementById('rightStickCanvas');
+    const leftStickSpeedVal = document.getElementById('leftStickSpeedVal');
+    const rightStickTurnVal = document.getElementById('rightStickTurnVal');
 
     // 超音波元素
     const frontCm = document.getElementById('frontCm');
@@ -1578,6 +2257,15 @@
       else if (type === "ultrasonic") {
         updateUltrasonic(data);
       }
+      else if (type === "imu") {
+        updateIMU(data);
+      }
+      else if (type === "auto_correct") {
+        updateAutoCorrectState(data.enabled);
+      }
+      else if (type === "relay") {
+        updateRelayState(data.state);
+      }
       else if (type === "log") {
         addLog(data.direction, data.text, data.hex, data.time);
       }
@@ -1585,6 +2273,7 @@
 
     function updateConnStatus(connected, mock, port = "") {
       connStatus.className = "status-badge";
+      let statusStr = "未連線";
       if (mock) {
         connStatus.classList.add("mock");
         connStatusText.innerText = "模擬測試中";
@@ -1592,6 +2281,7 @@
         connectBtn.className = "btn btn-primary";
         mockBtn.innerText = "🛑 停止模擬";
         mockBtn.className = "btn btn-danger";
+        statusStr = "模擬測試中";
       } else if (connected) {
         connStatus.classList.add("connected");
         connStatusText.innerText = `已連線: ${port}`;
@@ -1599,12 +2289,28 @@
         connectBtn.className = "btn btn-danger";
         mockBtn.innerText = "✨ 模擬模式";
         mockBtn.className = "btn btn-purple";
+        statusStr = `已連線: ${port}`;
       } else {
         connStatusText.innerText = "未連線";
         connectBtn.innerText = "🔌 連線";
         connectBtn.className = "btn btn-primary";
         mockBtn.innerText = "✨ 模擬模式";
         mockBtn.className = "btn btn-purple";
+        statusStr = "未連線";
+      }
+
+      // 同步更新無人機手把模式 HUD 狀態
+      if (droneConnStatus && droneConnText) {
+        droneConnStatus.className = "status-badge";
+        if (mock) {
+          droneConnStatus.classList.add("mock");
+          droneConnText.innerText = "模擬測試";
+        } else if (connected) {
+          droneConnStatus.classList.add("connected");
+          droneConnText.innerText = `已連線 (${port})`;
+        } else {
+          droneConnText.innerText = "未連線";
+        }
       }
     }
 
@@ -1642,6 +2348,12 @@
 
       // 3. 更新 SVG 戰術雷達圖
       renderRadarSvg(f_cm, r_cm);
+
+      // 4. 同步更新手機/平板無人機 HUD
+      if (droneFrontCmText) droneFrontCmText.innerText = (f_cm >= 0) ? f_cm.toFixed(1) : '--.-';
+      if (droneRightCmText) droneRightCmText.innerText = (r_cm >= 0) ? r_cm.toFixed(1) : '--.-';
+      if (droneFrontChip) droneFrontChip.classList.toggle('danger', f_cm >= 0 && f_cm < 15.0);
+      if (droneRightChip) droneRightChip.classList.toggle('danger', r_cm >= 0 && r_cm < 15.0);
     }
 
     function renderSensorUi(mm, cm, cmElem, mmElem, barElem, tagElem, sensorName) {
@@ -1721,6 +2433,114 @@
         rightBeamLine.setAttribute("x2", "240");
         rightBeamText.textContent = r_cm < 0 ? "超出範圍" : `${r_cm.toFixed(1)} cm`;
       }
+
+      // 車體旋轉同步朝向 Yaw
+      if (radarCarRotator) {
+        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 120 130)`);
+      }
+    }
+
+    // ==============================================
+    // 🧭 IMU 姿態顯示、羅盤方位與直線自動校正邏輯
+    // ==============================================
+    function getCardinalDirection(angle) {
+      let deg = angle;
+      if (deg < 0) deg += 360;
+      const directions = ["正北 (N)", "東北 (NE)", "正東 (E)", "東南 (SE)", "正南 (S)", "西南 (SW)", "正西 (W)", "西北 (NW)"];
+      const index = Math.round(deg / 45) % 8;
+      return directions[index];
+    }
+
+    function updateIMU(data) {
+      currentYaw = typeof data.yaw === 'number' ? data.yaw : currentYaw;
+      currentPitch = typeof data.pitch === 'number' ? data.pitch : currentPitch;
+      currentRoll = typeof data.roll === 'number' ? data.roll : currentRoll;
+
+      if (data.auto_correct !== undefined) {
+        updateAutoCorrectState(data.auto_correct);
+      }
+
+      const cardinal = getCardinalDirection(currentYaw);
+
+      // 1. 桌面儀表板更新
+      if (imuYawDisplay) imuYawDisplay.innerText = currentYaw.toFixed(1) + '°';
+      if (imuCardinalText) imuCardinalText.innerText = cardinal;
+      if (imuPitchDisplay) imuPitchDisplay.innerText = currentPitch.toFixed(1) + '°';
+      if (imuRollDisplay) imuRollDisplay.innerText = currentRoll.toFixed(1) + '°';
+
+      // 羅盤指針 (隨偏航角旋轉)
+      if (compassNeedle) {
+        compassNeedle.setAttribute("transform", `rotate(${-currentYaw.toFixed(1)} 80 80)`);
+      }
+
+      // 車輛雷達車體旋轉
+      if (radarCarRotator) {
+        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 120 130)`);
+      }
+
+      // 2. 無人機手把模式 HUD 更新
+      if (droneHudYawText) droneHudYawText.innerText = currentYaw.toFixed(1) + '°';
+      if (droneHudCardinalText) droneHudCardinalText.innerText = `(${cardinal.split(' ')[0]})`;
+    }
+
+    function updateAutoCorrectState(enabled) {
+      isAutoCorrectEnabled = !!enabled;
+      if (autoCorrectToggleBtn) {
+        autoCorrectToggleBtn.classList.toggle('active', isAutoCorrectEnabled);
+      }
+      if (autoCorrectBtnText) {
+        autoCorrectBtnText.innerText = isAutoCorrectEnabled ? 'ON 開啟' : 'OFF 關閉';
+      }
+      if (droneAutoCorrectToggleBtn) {
+        droneAutoCorrectToggleBtn.classList.toggle('active', isAutoCorrectEnabled);
+      }
+      if (droneAutoCorrectStatus) {
+        droneAutoCorrectStatus.innerText = isAutoCorrectEnabled ? 'ON' : 'OFF';
+      }
+    }
+
+    function toggleAutoCorrect() {
+      const nextState = !isAutoCorrectEnabled;
+      updateAutoCorrectState(nextState);
+      wsSend({ action: "set_auto_correct", enable: nextState });
+      addLog("TX", `直線自動校正: ${nextState ? '開啟 ON' : '關閉 OFF'}`);
+    }
+
+    function resetYawHeading() {
+      wsSend({ action: "reset_imu" });
+      currentYaw = 0.0;
+      updateIMU({ yaw: 0.0, pitch: currentPitch, roll: currentRoll });
+      addLog("TX", "發送 IMU 朝向歸零指令 (0x05)");
+    }
+
+    // ==============================================
+    // 💡 繼電器狀態同步與切換
+    // ==============================================
+    function updateRelayState(state) {
+      currentRelayState = !!state;
+      if (droneRelayBtn) {
+        droneRelayBtn.classList.toggle('active', currentRelayState);
+      }
+      if (droneRelayStatusLabel) {
+        droneRelayStatusLabel.innerText = currentRelayState ? 'ON 開啟 (運轉中)' : 'OFF 關閉';
+      }
+      if (relayOnBtn && relayOffBtn) {
+        if (currentRelayState) {
+          relayOnBtn.style.boxShadow = "0 0 10px rgba(34, 197, 94, 0.6)";
+          relayOffBtn.style.boxShadow = "none";
+        } else {
+          relayOnBtn.style.boxShadow = "none";
+          relayOffBtn.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.4)";
+        }
+      }
+    }
+
+    function toggleRelay() {
+      const nextState = !currentRelayState;
+      updateRelayState(nextState);
+      wsSend({ action: "relay", relay_id: 1, state: nextState });
+      try { navigator.vibrate?.(40); } catch (e) { }
+      addLog("TX", `控制繼電器切換: ${nextState ? 'ON 開啟' : 'OFF 關閉'}`);
     }
 
     // ==============================================
@@ -2387,11 +3207,511 @@
       }
     }
 
+    // ==============================================
+    // 📱 手機/平板無人機雙搖桿操作引擎 (Drone Dual-Joystick Engine)
+    // ==============================================
+    let droneSpeed = 0;
+    let droneTurn = 0;
+    let leftTouchId = null;
+    let rightTouchId = null;
+    let isLeftPointerDown = false;
+    let isRightPointerDown = false;
+
+    const stickCenter = 95;
+    const stickMaxR = 62;
+    const knobR = 24;
+
+    let leftKnobX = stickCenter;
+    let leftKnobY = stickCenter;
+    let rightKnobX = stickCenter;
+    let rightKnobY = stickCenter;
+
+    let droneLastSendTime = 0;
+
+    function openDroneMode() {
+      isDroneViewOpen = true;
+      if (droneControllerView) {
+        droneControllerView.style.display = 'flex';
+      }
+      if (droneCameraIframe && cameraIframe) {
+        droneCameraIframe.src = cameraIframe.src;
+      }
+      // 同步繼電器狀態到手把按鈕
+      updateRelayState(currentRelayState);
+      updateAutoCorrectState(isAutoCorrectEnabled);
+
+      setTimeout(() => {
+        initDroneSticks();
+      }, 50);
+
+      addLog("SYS", "切換至手機/平板雙搖桿手把模式");
+    }
+
+    function exitDroneMode() {
+      isDroneViewOpen = false;
+      if (droneControllerView) {
+        droneControllerView.style.display = 'none';
+      }
+      resetDroneSticks();
+      if (document.fullscreenElement) {
+        try { document.exitFullscreen?.(); } catch (e) { }
+      }
+      addLog("SYS", "已退出手機/平板手把模式，返回桌面儀表板");
+    }
+
+    function toggleDroneFullscreen() {
+      if (!document.fullscreenElement) {
+        try {
+          if (droneControllerView.requestFullscreen) {
+            droneControllerView.requestFullscreen();
+          } else if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+          }
+        } catch (e) { }
+      } else {
+        try { document.exitFullscreen?.(); } catch (e) { }
+      }
+    }
+
+    function setDroneMaxPower(val, btn) {
+      droneMaxPower = parseInt(val) || 200;
+      document.querySelectorAll('.drone-pwr-chip').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      if (maxPowerSelect) maxPowerSelect.value = droneMaxPower;
+    }
+
+    function droneEmergencyReset() {
+      resetDroneSticks();
+      wsSend({ action: "stop" });
+
+      const targetPort = currentPort || (portSelect ? portSelect.value : "");
+      const targetBaud = (baudSelect ? parseInt(baudSelect.value) : 9600) || 9600;
+      const wasMock = isMockMode || targetPort === "MOCK";
+
+      addLog("SYS", "🔄 觸發 Arduino 斷開並重新連線...");
+
+      // 1. 先斷開目前序列埠
+      wsSend({ action: "disconnect" });
+
+      // 2. 短暫延遲後重新連線 (使 Arduino DTR 觸發完整硬體重啟與零偏校準)
+      setTimeout(() => {
+        if (wasMock) {
+          wsSend({ action: "connect", port: "MOCK", baudrate: 9600 });
+          addLog("SYS", "🔄 已重新連線虛擬硬體 (Mock Mode)");
+        } else if (targetPort) {
+          wsSend({ action: "connect", port: targetPort, baudrate: targetBaud });
+          addLog("SYS", `🔄 正在重新連線序列埠: ${targetPort} (Baud: ${targetBaud})...`);
+        } else {
+          wsSend({ action: "reconnect" });
+          wsSend({ action: "refresh_ports" });
+          addLog("SYS", "⚠️ 未偵測到目標序列埠，已發送重連並刷新序列埠清單");
+        }
+      }, 500);
+    }
+
+    // --- 畫布繪製 ---
+    function drawLeftStick() {
+      if (!leftStickCanvas) return;
+      const ctxL = leftStickCanvas.getContext('2d');
+      const w = leftStickCanvas.width;
+      const h = leftStickCanvas.height;
+      ctxL.clearRect(0, 0, w, h);
+
+      // 外底盤
+      ctxL.beginPath();
+      ctxL.arc(stickCenter, stickCenter, stickMaxR + 12, 0, Math.PI * 2);
+      ctxL.fillStyle = '#0f172a';
+      ctxL.fill();
+      ctxL.lineWidth = 2;
+      ctxL.strokeStyle = '#334155';
+      ctxL.stroke();
+
+      // 垂直滑軌凹槽
+      ctxL.beginPath();
+      ctxL.moveTo(stickCenter, stickCenter - stickMaxR);
+      ctxL.lineTo(stickCenter, stickCenter + stickMaxR);
+      ctxL.strokeStyle = '#1e293b';
+      ctxL.lineWidth = 20;
+      ctxL.lineCap = 'round';
+      ctxL.stroke();
+
+      // 刻度引導線
+      ctxL.beginPath();
+      ctxL.moveTo(stickCenter - 18, stickCenter);
+      ctxL.lineTo(stickCenter + 18, stickCenter);
+      ctxL.strokeStyle = '#475569';
+      ctxL.lineWidth = 2;
+      ctxL.stroke();
+
+      // 握柄滑桿頭
+      const gradL = ctxL.createRadialGradient(leftKnobX - 4, leftKnobY - 4, 3, leftKnobX, leftKnobY, knobR);
+      gradL.addColorStop(0, '#7dd3fc');
+      gradL.addColorStop(0.6, '#0284c7');
+      gradL.addColorStop(1, '#0369a1');
+
+      ctxL.beginPath();
+      ctxL.arc(leftKnobX, leftKnobY, knobR, 0, Math.PI * 2);
+      ctxL.fillStyle = gradL;
+      ctxL.fill();
+      ctxL.lineWidth = 2.5;
+      ctxL.strokeStyle = '#bae6fd';
+      ctxL.stroke();
+
+      // 握柄中心防滑紋
+      ctxL.beginPath();
+      ctxL.moveTo(leftKnobX - 10, leftKnobY - 4);
+      ctxL.lineTo(leftKnobX + 10, leftKnobY - 4);
+      ctxL.moveTo(leftKnobX - 10, leftKnobY);
+      ctxL.lineTo(leftKnobX + 10, leftKnobY);
+      ctxL.moveTo(leftKnobX - 10, leftKnobY + 4);
+      ctxL.lineTo(leftKnobX + 10, leftKnobY + 4);
+      ctxL.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctxL.lineWidth = 1.5;
+      ctxL.stroke();
+    }
+
+    function drawRightStick() {
+      if (!rightStickCanvas) return;
+      const ctxR = rightStickCanvas.getContext('2d');
+      const w = rightStickCanvas.width;
+      const h = rightStickCanvas.height;
+      ctxR.clearRect(0, 0, w, h);
+
+      // 外底盤
+      ctxR.beginPath();
+      ctxR.arc(stickCenter, stickCenter, stickMaxR + 12, 0, Math.PI * 2);
+      ctxR.fillStyle = '#0f172a';
+      ctxR.fill();
+      ctxR.lineWidth = 2;
+      ctxR.strokeStyle = '#334155';
+      ctxR.stroke();
+
+      // 水平滑軌凹槽
+      ctxR.beginPath();
+      ctxR.moveTo(stickCenter - stickMaxR, stickCenter);
+      ctxR.lineTo(stickCenter + stickMaxR, stickCenter);
+      ctxR.strokeStyle = '#1e293b';
+      ctxR.lineWidth = 20;
+      ctxR.lineCap = 'round';
+      ctxR.stroke();
+
+      // 刻度引導線
+      ctxR.beginPath();
+      ctxR.moveTo(stickCenter, stickCenter - 18);
+      ctxR.lineTo(stickCenter, stickCenter + 18);
+      ctxR.strokeStyle = '#475569';
+      ctxR.lineWidth = 2;
+      ctxR.stroke();
+
+      // 握柄滑桿頭 (帶紫色科技光澤)
+      const gradR = ctxR.createRadialGradient(rightKnobX - 4, rightKnobY - 4, 3, rightKnobX, rightKnobY, knobR);
+      gradR.addColorStop(0, '#c084fc');
+      gradR.addColorStop(0.6, '#9333ea');
+      gradR.addColorStop(1, '#6b21a8');
+
+      ctxR.beginPath();
+      ctxR.arc(rightKnobX, rightKnobY, knobR, 0, Math.PI * 2);
+      ctxR.fillStyle = gradR;
+      ctxR.fill();
+      ctxR.lineWidth = 2.5;
+      ctxR.strokeStyle = '#e9d5ff';
+      ctxR.stroke();
+
+      // 握柄防滑紋
+      ctxR.beginPath();
+      ctxR.moveTo(rightKnobX - 4, rightKnobY - 10);
+      ctxR.lineTo(rightKnobX - 4, rightKnobY + 10);
+      ctxR.moveTo(rightKnobX, rightKnobY - 10);
+      ctxR.lineTo(rightKnobX, rightKnobY + 10);
+      ctxR.moveTo(rightKnobX + 4, rightKnobY - 10);
+      ctxR.lineTo(rightKnobX + 4, rightKnobY + 10);
+      ctxR.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctxR.lineWidth = 1.5;
+      ctxR.stroke();
+    }
+
+    function initDroneSticks() {
+      drawLeftStick();
+      drawRightStick();
+    }
+
+    function resetDroneSticks() {
+      leftKnobX = stickCenter;
+      leftKnobY = stickCenter;
+      rightKnobX = stickCenter;
+      rightKnobY = stickCenter;
+      droneSpeed = 0;
+      droneTurn = 0;
+      leftTouchId = null;
+      rightTouchId = null;
+      isLeftPointerDown = false;
+      isRightPointerDown = false;
+
+      if (leftStickSpeedVal) leftStickSpeedVal.innerText = 0;
+      if (rightStickTurnVal) rightStickTurnVal.innerText = 0;
+
+      drawLeftStick();
+      drawRightStick();
+      sendDroneDrive(true);
+    }
+
+    function sendDroneDrive(force = false) {
+      const now = performance.now();
+      if (force || now - droneLastSendTime >= SEND_INTERVAL_MS) {
+        droneLastSendTime = now;
+        wsSend({
+          action: "dual_motor",
+          turn: droneTurn,
+          speed: droneSpeed
+        });
+
+        // 當兩邊搖桿皆回中停止時，雙重發送 stop 動作確保馬達 100% 煞停
+        if (droneTurn === 0 && droneSpeed === 0) {
+          wsSend({ action: "stop" });
+          setTimeout(() => {
+            if (droneTurn === 0 && droneSpeed === 0) {
+              wsSend({ action: "stop" });
+            }
+          }, 35);
+        }
+      }
+    }
+
+    // --- 左搖桿事件 (前進 / 後退) ---
+    function updateLeftStickFromClientY(clientY) {
+      const rect = leftStickCanvas.getBoundingClientRect();
+      const y = clientY - rect.top;
+      let dy = y - stickCenter;
+      dy = Math.max(-stickMaxR, Math.min(stickMaxR, dy));
+
+      leftKnobY = stickCenter + dy;
+      leftKnobX = stickCenter;
+
+      // 規範化 (-1.0 ~ +1.0)，往上推為正前進
+      let normY = -dy / stickMaxR;
+      if (Math.abs(normY) < 0.08) normY = 0;
+
+      droneSpeed = Math.round(normY * droneMaxPower);
+      if (leftStickSpeedVal) leftStickSpeedVal.innerText = droneSpeed;
+
+      drawLeftStick();
+      sendDroneDrive();
+    }
+
+    function releaseLeftStick() {
+      leftKnobX = stickCenter;
+      leftKnobY = stickCenter;
+      droneSpeed = 0;
+      leftTouchId = null;
+      isLeftPointerDown = false;
+      if (leftStickSpeedVal) leftStickSpeedVal.innerText = 0;
+      drawLeftStick();
+      sendDroneDrive(true);
+    }
+
+    // --- 右搖桿事件 (左轉 / 右轉) ---
+    function updateRightStickFromClientX(clientX) {
+      const rect = rightStickCanvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      let dx = x - stickCenter;
+      dx = Math.max(-stickMaxR, Math.min(stickMaxR, dx));
+
+      rightKnobX = stickCenter + dx;
+      rightKnobY = stickCenter;
+
+      // 規範化 (-1.0 ~ +1.0)，往左推為逆時針左轉 (正)，往右推為順時針右轉 (負)
+      let normX = -dx / stickMaxR;
+      if (Math.abs(normX) < 0.08) normX = 0;
+
+      droneTurn = Math.round(normX * droneMaxPower);
+      if (rightStickTurnVal) rightStickTurnVal.innerText = droneTurn;
+
+      drawRightStick();
+      sendDroneDrive();
+    }
+
+    function releaseRightStick() {
+      rightKnobX = stickCenter;
+      rightKnobY = stickCenter;
+      droneTurn = 0;
+      rightTouchId = null;
+      isRightPointerDown = false;
+      if (rightStickTurnVal) rightStickTurnVal.innerText = 0;
+      drawRightStick();
+      sendDroneDrive(true);
+    }
+
+    function setupDroneStickEvents() {
+      if (!leftStickCanvas || !rightStickCanvas) return;
+
+      // --- 1. Touch Events (精準多點觸控，左手與右手完全獨立) ---
+      leftStickCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        leftTouchId = touch.identifier;
+        updateLeftStickFromClientY(touch.clientY);
+      }, { passive: false });
+
+      leftStickCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === leftTouchId) {
+            updateLeftStickFromClientY(e.changedTouches[i].clientY);
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const handleLeftTouchEnd = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === leftTouchId) {
+            releaseLeftStick();
+            break;
+          }
+        }
+      };
+      leftStickCanvas.addEventListener('touchend', handleLeftTouchEnd);
+      leftStickCanvas.addEventListener('touchcancel', handleLeftTouchEnd);
+
+      rightStickCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        rightTouchId = touch.identifier;
+        updateRightStickFromClientX(touch.clientX);
+      }, { passive: false });
+
+      rightStickCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === rightTouchId) {
+            updateRightStickFromClientX(e.changedTouches[i].clientX);
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const handleRightTouchEnd = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === rightTouchId) {
+            releaseRightStick();
+            break;
+          }
+        }
+      };
+      rightStickCanvas.addEventListener('touchend', handleRightTouchEnd);
+      rightStickCanvas.addEventListener('touchcancel', handleRightTouchEnd);
+
+      // --- 2. Pointer Events (支援滑鼠或桌面模擬拖曳) ---
+      leftStickCanvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return; // touch 由 touchstart 處理
+        isLeftPointerDown = true;
+        leftStickCanvas.setPointerCapture(e.pointerId);
+        updateLeftStickFromClientY(e.clientY);
+      });
+
+      leftStickCanvas.addEventListener('pointermove', (e) => {
+        if (isLeftPointerDown) {
+          updateLeftStickFromClientY(e.clientY);
+        }
+      });
+
+      const handleLeftPointerUp = (e) => {
+        if (isLeftPointerDown) {
+          try { leftStickCanvas.releasePointerCapture(e.pointerId); } catch (ex) { }
+          releaseLeftStick();
+        }
+      };
+      leftStickCanvas.addEventListener('pointerup', handleLeftPointerUp);
+      leftStickCanvas.addEventListener('pointercancel', handleLeftPointerUp);
+
+      rightStickCanvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
+        isRightPointerDown = true;
+        rightStickCanvas.setPointerCapture(e.pointerId);
+        updateRightStickFromClientX(e.clientX);
+      });
+
+      rightStickCanvas.addEventListener('pointermove', (e) => {
+        if (isRightPointerDown) {
+          updateRightStickFromClientX(e.clientX);
+        }
+      });
+
+      const handleRightPointerUp = (e) => {
+        if (isRightPointerDown) {
+          try { rightStickCanvas.releasePointerCapture(e.pointerId); } catch (ex) { }
+          releaseRightStick();
+        }
+      };
+      rightStickCanvas.addEventListener('pointerup', handleRightPointerUp);
+      rightStickCanvas.addEventListener('pointercancel', handleRightPointerUp);
+
+      // --- 3. Global Safety & Fallback Handlers (全域防呆與邊界釋放) ---
+      // 確保手指即使拖出 Canvas 範圍也能持續追蹤
+      window.addEventListener('touchmove', (e) => {
+        if (!isDroneViewOpen) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          if (t.identifier === leftTouchId) {
+            updateLeftStickFromClientY(t.clientY);
+          } else if (t.identifier === rightTouchId) {
+            updateRightStickFromClientX(t.clientX);
+          }
+        }
+      }, { passive: false });
+
+      // 全域 Touchend / Touchcancel：手指在螢幕任何位置放開或手勢被系統中斷時，即刻釋放
+      const handleGlobalTouchEnd = (e) => {
+        if (!isDroneViewOpen) return;
+        const activeIds = new Set();
+        for (let i = 0; i < e.touches.length; i++) {
+          activeIds.add(e.touches[i].identifier);
+        }
+        if (leftTouchId !== null && !activeIds.has(leftTouchId)) {
+          releaseLeftStick();
+        }
+        if (rightTouchId !== null && !activeIds.has(rightTouchId)) {
+          releaseRightStick();
+        }
+        if (e.touches.length === 0) {
+          if (leftTouchId !== null || droneSpeed !== 0) releaseLeftStick();
+          if (rightTouchId !== null || droneTurn !== 0) releaseRightStick();
+        }
+      };
+
+      window.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
+      window.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true });
+
+      // 視窗失去焦點、切換分頁或手機鎖定時立即強制煞停
+      window.addEventListener('blur', () => {
+        if (isDroneViewOpen) resetDroneSticks();
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && isDroneViewOpen) resetDroneSticks();
+      });
+      window.addEventListener('pointerup', () => {
+        if (isLeftPointerDown) releaseLeftStick();
+        if (isRightPointerDown) releaseRightStick();
+      });
+      window.addEventListener('pointercancel', () => {
+        if (isLeftPointerDown) releaseLeftStick();
+        if (isRightPointerDown) releaseRightStick();
+      });
+    }
+
+    // 鍵盤 ESC 退出手把模式
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isDroneViewOpen) {
+        exitDroneMode();
+      }
+    });
+
     // 啟動 WebSocket、方向按鈕與影像監控事件
     window.addEventListener('load', () => {
       initWebSocket();
       setupDpadEvents();
       initCameraStream();
+      setupDroneStickEvents();
     });
   </script>
 </body>

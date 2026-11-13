@@ -8,11 +8,14 @@
 #define CMD_DUAL_MOTOR        0x01  // 控制雙馬達 (Payload: 4 bytes -> turn: int16, speed: int16)
 #define CMD_SINGLE_MOTOR      0x02  // 控制單馬達 (Payload: 3 bytes -> motor_id: uint8, speed: int16)
 #define CMD_RELAY             0x03  // 控制繼電器 (Payload: 2 bytes -> relay_id: uint8, state: uint8)
+#define CMD_SET_AUTO_CORRECT  0x04  // 自動校正開關 (Payload: 1 byte -> enable: uint8, 1:開, 0:關)
+#define CMD_RESET_IMU_YAW     0x05  // 朝向歸零/重設 (Payload: 0 bytes)
 
 // Arduino 發送給電腦的訊息指令
 #define CMD_ULTRASONIC        0x10  // 超音波數據 (Payload: 4 bytes int32 毫米，或 5 bytes: id + mm)
 #define CMD_ULTRASONIC_FRONT  0x11  // 前方超音波數據 (Payload: 4 bytes int32 毫米)
 #define CMD_ULTRASONIC_RIGHT  0x12  // 右方超音波數據 (Payload: 4 bytes int32 毫米)
+#define CMD_IMU_DATA          0x13  // IMU 姿態數據 (Payload: 7 bytes -> yaw_x10: int16, pitch_x10: int16, roll_x10: int16, auto_correct: uint8)
 #define CMD_LOG_MSG           0x20  // Arduino 發送文字訊息給電腦 (Payload: 字串)
 
 /**
@@ -243,6 +246,21 @@ public:
         buf[2] = (uint8_t)((val2 >> 8) & 0xFF);
         buf[3] = (uint8_t)(val2 & 0xFF);
         sendPacket(cmd, buf, 4);
+    }
+
+    /**
+     * @brief 發送 IMU 姿態封包 (7 bytes: yaw_x10: int16, pitch_x10: int16, roll_x10: int16, autoCorrect: uint8)
+     */
+    void sendIMUData(int16_t yaw_x10, int16_t pitch_x10, int16_t roll_x10, uint8_t autoCorrect) {
+        uint8_t buf[7];
+        buf[0] = (uint8_t)((yaw_x10 >> 8) & 0xFF);
+        buf[1] = (uint8_t)(yaw_x10 & 0xFF);
+        buf[2] = (uint8_t)((pitch_x10 >> 8) & 0xFF);
+        buf[3] = (uint8_t)(pitch_x10 & 0xFF);
+        buf[4] = (uint8_t)((roll_x10 >> 8) & 0xFF);
+        buf[5] = (uint8_t)(roll_x10 & 0xFF);
+        buf[6] = autoCorrect;
+        sendPacket(CMD_IMU_DATA, buf, 7);
     }
 
     /**

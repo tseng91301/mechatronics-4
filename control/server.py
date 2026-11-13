@@ -36,10 +36,13 @@ CMD_PING              = 0x00  # 測試連線
 CMD_DUAL_MOTOR        = 0x01  # 雙馬達 (turn: int16, speed: int16)
 CMD_SINGLE_MOTOR      = 0x02  # 單馬達 (motor_id: uint8, speed: int16)
 CMD_RELAY             = 0x03  # 繼電器 (relay_id: uint8, state: uint8)
+CMD_SET_AUTO_CORRECT  = 0x04  # 自動校正開關 (enable: uint8)
+CMD_RESET_IMU_YAW     = 0x05  # 朝向歸零
 
 CMD_ULTRASONIC        = 0x10  # 4 bytes int32 (mm) 或 5 bytes (id + mm)
 CMD_ULTRASONIC_FRONT  = 0x11  # 4 bytes int32 (mm)
 CMD_ULTRASONIC_RIGHT  = 0x12  # 4 bytes int32 (mm)
+CMD_IMU_DATA          = 0x13  # IMU 姿態數據 (7 bytes: yaw_x10, pitch_x10, roll_x10, auto_correct)
 CMD_LOG_MSG           = 0x20  # 文字訊息
 
 STATE_WAIT_START = 0
@@ -97,6 +100,11 @@ class ArduinoBridge:
             "right_mm": -1,
             "front_cm": -1.0,
             "right_cm": -1.0,
+            "yaw": 0.0,
+            "pitch": 0.0,
+            "roll": 0.0,
+            "auto_correct": False,
+            "relay_state": False,
             "last_updated": 0
         }
 
@@ -110,8 +118,11 @@ class ArduinoBridge:
             CMD_DUAL_MOTOR: 4,
             CMD_SINGLE_MOTOR: 3,
             CMD_RELAY: 2,
+            CMD_SET_AUTO_CORRECT: 1,
+            CMD_RESET_IMU_YAW: 0,
             CMD_ULTRASONIC_FRONT: 4,
             CMD_ULTRASONIC_RIGHT: 4,
+            CMD_IMU_DATA: 7,
         }
 
     def set_event_loop(self, loop: asyncio.AbstractEventLoop):
@@ -211,6 +222,20 @@ class ArduinoBridge:
             "baudrate": self.baudrate
         })
 
+    def reconnect(self) -> bool:
+        """重新連線目前的序列埠或 Mock 模式 (使 Arduino 完整重啟復位)"""
+        if self.mock_mode or self.port == "MOCK":
+            self.stop_mock()
+            self.start_mock()
+            return True
+        port = self.port
+        baud = self.baudrate
+        if not port:
+            self.log("SYS", "無法重新連線：尚未連線過任何序列埠")
+            return False
+        self.log("SYS", f"正在重新連線序列埠: {port} (Baud: {baud})...")
+        return self.connect(port, baud)
+
     def start_mock(self):
         """啟動虛擬模擬模式 (無實體硬體時可用於測試 UI)"""
         self.disconnect()
@@ -292,9 +317,39 @@ class ArduinoBridge:
 
     def send_relay(self, relay_id: int, state: bool):
         relay_id = int(relay_id)
-        payload = struct.pack('>BB', relay_id, 1 if state else 0)
-        desc = f"控制繼電器 ID={relay_id}, 狀態={'ON' if state else 'OFF'}"
+        state_bool = bool(state)
+        self.latest_data["relay_state"] = state_bool
+        payload = struct.pack('>BB', relay_id, 1 if state_bool else 0)
+        desc = f"控制繼電器 ID={relay_id}, 狀態={'ON' if state_bool else 'OFF'}"
         self.send_packet(CMD_RELAY, payload, desc)
+        self.notify({
+            "type": "relay",
+            "relay_id": relay_id,
+            "state": state_bool
+        })
+
+    def send_auto_correct(self, enable: bool):
+        state_bool = bool(enable)
+        self.latest_data["auto_correct"] = state_bool
+        payload = struct.pack('>B', 1 if state_bool else 0)
+        desc = f"設定直線自動校正: {'開啟 ON' if state_bool else '關閉 OFF'}"
+        self.send_packet(CMD_SET_AUTO_CORRECT, payload, desc)
+        self.notify({
+            "type": "auto_correct",
+            "enabled": state_bool
+        })
+
+    def send_reset_imu(self):
+        desc = "重設 IMU 朝向歸零 (0x05)"
+        self.latest_data["yaw"] = 0.0
+        self.send_packet(CMD_RESET_IMU_YAW, b'', desc)
+        self.notify({
+            "type": "imu",
+            "yaw": 0.0,
+            "pitch": self.latest_data["pitch"],
+            "roll": self.latest_data["roll"],
+            "auto_correct": self.latest_data["auto_correct"]
+        })
 
     def send_ping(self):
         self.send_packet(CMD_PING, b'', "連線測試 Ping (0x00)")
@@ -429,6 +484,28 @@ class ArduinoBridge:
                     "right_cm": self.latest_data["right_cm"]
                 })
 
+        elif cmd == CMD_IMU_DATA:
+            if len(payload) >= 7:
+                y_raw, p_raw, r_raw, ac_raw = struct.unpack('>hhhB', payload[:7])
+                yaw = round(y_raw / 10.0, 1)
+                pitch = round(p_raw / 10.0, 1)
+                roll = round(r_raw / 10.0, 1)
+                auto_correct = bool(ac_raw)
+
+                self.latest_data["yaw"] = yaw
+                self.latest_data["pitch"] = pitch
+                self.latest_data["roll"] = roll
+                self.latest_data["auto_correct"] = auto_correct
+                self.latest_data["last_updated"] = time.time()
+
+                self.notify({
+                    "type": "imu",
+                    "yaw": yaw,
+                    "pitch": pitch,
+                    "roll": roll,
+                    "auto_correct": auto_correct
+                })
+
         elif cmd == CMD_LOG_MSG:
             msg = payload.decode('utf-8', errors='ignore')
             self.log("RX", f"Arduino 訊息: {msg}", hex_str)
@@ -452,12 +529,24 @@ class ArduinoBridge:
             self.latest_data["right_mm"] = r_dist
             self.latest_data["right_cm"] = round(r_dist / 10.0, 1)
 
+            # 模擬 IMU 姿態自然微晃
+            self.latest_data["yaw"] = round((self.latest_data["yaw"] + random.uniform(-0.15, 0.15)) % 360, 1)
+            if self.latest_data["yaw"] > 180:
+                self.latest_data["yaw"] -= 360
+
             self.notify({
                 "type": "ultrasonic",
                 "front_mm": f_dist,
                 "front_cm": self.latest_data["front_cm"],
                 "right_mm": r_dist,
                 "right_cm": self.latest_data["right_cm"]
+            })
+            self.notify({
+                "type": "imu",
+                "yaw": self.latest_data["yaw"],
+                "pitch": round(1.2 * math.sin(t * 0.4), 1),
+                "roll": round(0.8 * math.cos(t * 0.3), 1),
+                "auto_correct": self.latest_data["auto_correct"]
             })
             time.sleep(0.2)
 
@@ -574,6 +663,18 @@ async def websocket_endpoint(websocket: WebSocket):
         "right_mm": bridge.latest_data["right_mm"],
         "right_cm": bridge.latest_data["right_cm"]
     })
+    await websocket.send_json({
+        "type": "imu",
+        "yaw": bridge.latest_data["yaw"],
+        "pitch": bridge.latest_data["pitch"],
+        "roll": bridge.latest_data["roll"],
+        "auto_correct": bridge.latest_data["auto_correct"]
+    })
+    await websocket.send_json({
+        "type": "relay",
+        "relay_id": 1,
+        "state": bridge.latest_data["relay_state"]
+    })
 
     try:
         while True:
@@ -598,6 +699,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 state = bool(data.get("state", False))
                 bridge.send_relay(relay_id, state)
 
+            elif action == "set_auto_correct":
+                enable = bool(data.get("enable", False))
+                bridge.send_auto_correct(enable)
+
+            elif action == "reset_imu":
+                bridge.send_reset_imu()
+
             elif action == "ping":
                 bridge.send_ping()
 
@@ -620,6 +728,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif action == "disconnect":
                 bridge.disconnect()
+
+            elif action == "reconnect":
+                port = data.get("port", "") or bridge.port
+                baud = int(data.get("baudrate", 0)) or bridge.baudrate
+                if port == "MOCK" or bridge.mock_mode:
+                    bridge.reconnect()
+                elif port:
+                    bridge.connect(port, baud)
+                else:
+                    bridge.reconnect()
 
             elif action == "refresh_ports":
                 await websocket.send_json({
