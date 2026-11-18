@@ -38,11 +38,18 @@ CMD_SINGLE_MOTOR      = 0x02  # 單馬達 (motor_id: uint8, speed: int16)
 CMD_RELAY             = 0x03  # 繼電器 (relay_id: uint8, state: uint8)
 CMD_SET_AUTO_CORRECT  = 0x04  # 自動校正開關 (enable: uint8)
 CMD_RESET_IMU_YAW     = 0x05  # 朝向歸零
+CMD_SET_HEADING       = 0x06  # 指定目標航向導航 (target_yaw_x10: int16, speed: int16)
+CMD_SET_SWEEP         = 0x07  # 擺頭開關與參數 (enable: uint8, amp_x10: int16, period_ms: uint16)
+CMD_STOP_MOTION       = 0x08  # 煞停並停止任何航向/擺頭運動 (0 bytes)
+CMD_SET_SAFETY_THRESH = 0x09  # 設定防撞距離門檻 (threshold_mm: uint16, 0代表關閉)
+CMD_GET_SAFETY_THRESH = 0x0A  # 查詢當前防撞距離門檻 (0 bytes)
+CMD_SET_TURN_SPEED    = 0x0B  # 設定對齊旋轉轉速上限 (turn_speed: int16, 40~200)
 
 CMD_ULTRASONIC        = 0x10  # 4 bytes int32 (mm) 或 5 bytes (id + mm)
 CMD_ULTRASONIC_FRONT  = 0x11  # 4 bytes int32 (mm)
 CMD_ULTRASONIC_RIGHT  = 0x12  # 4 bytes int32 (mm)
-CMD_IMU_DATA          = 0x13  # IMU 姿態數據 (7 bytes: yaw_x10, pitch_x10, roll_x10, auto_correct)
+CMD_IMU_DATA          = 0x13  # IMU 姿態數據 (7 bytes: yaw_x10, pitch_x10, roll_x10, mode)
+CMD_SAFETY_THRESH_DATA= 0x14  # 回傳防撞距離門檻 (2 bytes uint16 mm)
 CMD_LOG_MSG           = 0x20  # 文字訊息
 
 STATE_WAIT_START = 0
@@ -94,6 +101,10 @@ class ArduinoBridge:
         self.mock_mode: bool = False
         self.mock_thread: Optional[threading.Thread] = None
 
+        # 主動巡航心跳線程 (避免自主導航時因超過 1000ms 觸發 Arduino 失聯安全煞停)
+        self.active_heading: Optional[tuple] = None
+        self.heartbeat_thread: Optional[threading.Thread] = None
+
         # 最新感測器數值
         self.latest_data = {
             "front_mm": -1,
@@ -103,6 +114,10 @@ class ArduinoBridge:
             "yaw": 0.0,
             "pitch": 0.0,
             "roll": 0.0,
+            "mode": 0,
+            "mode_name": "MANUAL",
+            "safety_threshold_mm": 150,
+            "safety_threshold_cm": 15.0,
             "auto_correct": False,
             "relay_state": False,
             "last_updated": 0
@@ -120,6 +135,13 @@ class ArduinoBridge:
             CMD_RELAY: 2,
             CMD_SET_AUTO_CORRECT: 1,
             CMD_RESET_IMU_YAW: 0,
+            CMD_SET_HEADING: 4,
+            CMD_SET_SWEEP: 5,
+            CMD_STOP_MOTION: 0,
+            CMD_SET_SAFETY_THRESH: 2,
+            CMD_GET_SAFETY_THRESH: 0,
+            CMD_SET_TURN_SPEED: 2,
+            CMD_SAFETY_THRESH_DATA: 2,
             CMD_ULTRASONIC_FRONT: 4,
             CMD_ULTRASONIC_RIGHT: 4,
             CMD_IMU_DATA: 7,
@@ -176,6 +198,11 @@ class ArduinoBridge:
             self.rx_thread = threading.Thread(target=self._rx_worker, daemon=True)
             self.rx_thread.start()
 
+            # 啟動心跳維護線程 (200ms 週期，5Hz)
+            if not self.heartbeat_thread or not self.heartbeat_thread.is_alive():
+                self.heartbeat_thread = threading.Thread(target=self._heartbeat_worker, daemon=True)
+                self.heartbeat_thread.start()
+
             self.log("SYS", f"成功連線至序列埠: {port} (Baud: {baudrate})")
             self.notify({
                 "type": "status",
@@ -200,6 +227,7 @@ class ArduinoBridge:
 
     def disconnect(self):
         self.is_connected = False
+        self.active_heading = None
         if self.ser:
             try:
                 # 斷線前煞車保護
@@ -341,6 +369,10 @@ class ArduinoBridge:
         spd_str = "停止" if speed == 0 else f"{'前進' if speed > 0 else '後退'} ({abs(speed)})"
         desc = f"雙馬達操控: 轉向={turn} ({turn_str}), 速度={speed} ({spd_str})"
 
+        # 若停止馬達，一併清除活躍航向
+        if turn == 0 and speed == 0:
+            self.active_heading = None
+
         # 若為重複心跳且數值未變，靜默發送至序列埠維持 Arduino 運轉，避免 Web 日誌刷屏
         is_repeat = hasattr(self, '_last_drive') and self._last_drive == (turn, speed)
         quiet = is_heartbeat or is_repeat
@@ -394,6 +426,71 @@ class ArduinoBridge:
 
     def send_ping(self):
         self.send_packet(CMD_PING, b'', "連線測試 Ping (0x00)")
+
+    def send_set_heading(self, target_yaw: float, speed: int = 0, quiet: bool = False):
+        """指定目標航向導航 (0x06): target_yaw (deg), speed (-255~255)"""
+        yaw_x10 = max(-1800, min(1800, int(round(target_yaw * 10.0))))
+        speed = max(-255, min(255, int(speed)))
+        payload = struct.pack('>hh', yaw_x10, speed)
+        desc = f"設定目標航向: {target_yaw:.1f}° (速度={speed})"
+
+        # 若速度非 0，啟動背景活躍航向心跳保持巡航
+        if speed != 0:
+            self.active_heading = (target_yaw, speed)
+        else:
+            self.active_heading = None
+
+        self.send_packet(CMD_SET_HEADING, payload, desc, quiet=quiet)
+
+    def send_set_sweep(self, enable: bool, amp: float = 20.0, period_ms: int = 2000):
+        """設定或開關擺頭模式 (0x07): enable (bool), amp (deg), period_ms (ms)"""
+        en_val = 1 if enable else 0
+        amp_x10 = max(0, min(900, int(round(amp * 10.0))))
+        period_ms = max(500, min(65535, int(period_ms)))
+        payload = struct.pack('>BhH', en_val, amp_x10, period_ms)
+        desc = f"動態擺頭模式: {'開啟 ON' if enable else '關閉 OFF'} (幅度=±{amp:.1f}°, 週期={period_ms}ms)"
+        self.send_packet(CMD_SET_SWEEP, payload, desc)
+
+    def send_stop_motion(self):
+        """煞停並停止任何航向/擺頭運動 (0x08)"""
+        self.active_heading = None
+        desc = "停止運動並解除航向/擺頭鎖定 (0x08)"
+        self.send_packet(CMD_STOP_MOTION, b'', desc)
+
+    def _heartbeat_worker(self):
+        """背景定時發送巡航心跳至 Arduino，維持自主導航運轉避免 1000ms 逾時煞停"""
+        while self.is_connected or self.mock_mode:
+            try:
+                if self.active_heading is not None:
+                    target_yaw, speed = self.active_heading
+                    if speed != 0:
+                        yaw_x10 = max(-1800, min(1800, int(round(target_yaw * 10.0))))
+                        spd = max(-255, min(255, int(speed)))
+                        payload = struct.pack('>hh', yaw_x10, spd)
+                        # 以靜音模式持續發送保持 Arduino 運作
+                        self.send_packet(CMD_SET_HEADING, payload, "巡航心跳", quiet=True)
+                time.sleep(0.2)  # 200ms 心跳週期 (5Hz)，遠小於 Arduino 1000ms 門檻
+            except Exception:
+                time.sleep(0.2)
+
+    def send_set_safety_threshold(self, threshold_mm: int):
+        """設定超音波極限防撞門檻 (0x09): threshold_mm (uint16, 0 代表關閉)"""
+        threshold_mm = max(0, min(65535, int(threshold_mm)))
+        payload = struct.pack('>H', threshold_mm)
+        desc = f"設定防撞安全門檻: {threshold_mm} mm ({threshold_mm/10.0:.1f} cm)"
+        self.send_packet(CMD_SET_SAFETY_THRESH, payload, desc)
+
+    def send_get_safety_threshold(self):
+        """查詢超音波防撞門檻 (0x0A)"""
+        desc = "查詢防撞安全門檻 (0x0A)"
+        self.send_packet(CMD_GET_SAFETY_THRESH, b'', desc)
+
+    def send_set_turn_speed(self, turn_speed: int):
+        """設定原地旋轉對齊速度上限 (0x0B): turn_speed (int16, 40~200)"""
+        turn_speed = max(40, min(220, int(turn_speed)))
+        payload = struct.pack('>h', turn_speed)
+        desc = f"設定旋轉轉速上限: {turn_speed} PWM"
+        self.send_packet(CMD_SET_TURN_SPEED, payload, desc)
 
     # ------------------ 接收解析狀態機 ------------------
     def _rx_worker(self):
@@ -502,10 +599,17 @@ class ArduinoBridge:
                 pitch = round(p_raw / 10.0, 1)
                 roll = round(r_raw / 10.0, 1)
                 auto_correct = bool(ac_raw)
+                is_heading = bool(ac_raw & 0x01)
+                is_sweep = bool(ac_raw & 0x02)
+                base_mode = "HEADING" if is_heading else "MANUAL"
+                mode_name = f"{base_mode}+SWEEP" if is_sweep else base_mode
 
                 self.latest_data["yaw"] = yaw
                 self.latest_data["pitch"] = pitch
                 self.latest_data["roll"] = roll
+                self.latest_data["mode"] = ac_raw
+                self.latest_data["mode_name"] = mode_name
+                self.latest_data["sweep_enabled"] = is_sweep
                 self.latest_data["auto_correct"] = auto_correct
                 self.latest_data["last_updated"] = time.time()
 
@@ -514,12 +618,34 @@ class ArduinoBridge:
                     "yaw": yaw,
                     "pitch": pitch,
                     "roll": roll,
+                    "mode": ac_raw,
+                    "mode_name": mode_name,
+                    "sweep_enabled": is_sweep,
                     "auto_correct": auto_correct
+                })
+
+        elif cmd == CMD_SAFETY_THRESH_DATA:
+            if len(payload) >= 2:
+                thresh_mm = struct.unpack('>H', payload[:2])[0]
+                self.latest_data["safety_threshold_mm"] = thresh_mm
+                self.latest_data["safety_threshold_cm"] = round(thresh_mm / 10.0, 1)
+                self.log("RX", f"目前超音波防撞門檻: {thresh_mm} mm ({thresh_mm/10.0:.1f} cm)")
+                self.notify({
+                    "type": "safety_threshold",
+                    "threshold_mm": thresh_mm,
+                    "threshold_cm": round(thresh_mm / 10.0, 1)
                 })
 
         elif cmd == CMD_LOG_MSG:
             msg = payload.decode('utf-8', errors='ignore')
             self.log("RX", f"Arduino 訊息: {msg}", hex_str)
+            # 若 Arduino 觸發極限防撞緊急煞停，清除心跳保持並廣播通知
+            if "E-Stop" in msg or "obstacle" in msg:
+                self.active_heading = None
+                self.notify({
+                    "type": "e_stop",
+                    "reason": msg
+                })
 
         else:
             self.log("RX", f"收到未註冊指令 0x{cmd:02X}", hex_str)
@@ -587,10 +713,20 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "t
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
     """回傳主頁面 HTML (由 Jinja2 模板渲染)"""
+    """回傳自主導航與除錯主頁面 HTML (由 Jinja2 模板渲染)"""
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={"title": "Mechatronics-4 機器人遠程監控與控制台"}
+    )
+
+@app.get("/legacy", response_class=HTMLResponse)
+async def get_legacy(request: Request):
+    """回傳傳統手動遙控與無人機手把模式頁面 HTML"""
+    return templates.TemplateResponse(
+        request=request,
+        name="legacy.html",
+        context={"title": "Mechatronics-4 機器人傳統遙控台 (Legacy)"}
     )
 
 # API 模型
@@ -601,6 +737,55 @@ class ConnectRequest(BaseModel):
 class HexRequest(BaseModel):
     hex_string: str
     auto_wrap: bool = True
+
+class HeadingRequest(BaseModel):
+    target_yaw: float
+    speed: int = 0
+
+class SweepRequest(BaseModel):
+    enable: bool = True
+    amplitude: float = 20.0
+    period_ms: int = 2000
+
+class SafetyThresholdRequest(BaseModel):
+    threshold_mm: int
+
+class TurnSpeedRequest(BaseModel):
+    turn_speed: int = 90
+
+@app.post("/api/turn_speed")
+async def api_set_turn_speed(req: TurnSpeedRequest):
+    bridge.send_set_turn_speed(req.turn_speed)
+    return {"success": True, "turn_speed": req.turn_speed}
+
+@app.post("/api/heading")
+async def api_heading(req: HeadingRequest):
+    bridge.send_set_heading(req.target_yaw, req.speed)
+    return {"success": True, "target_yaw": req.target_yaw, "speed": req.speed}
+
+@app.post("/api/sweep")
+async def api_sweep(req: SweepRequest):
+    bridge.send_set_sweep(req.enable, req.amplitude, req.period_ms)
+    return {"success": True, "enable": req.enable, "amplitude": req.amplitude, "period_ms": req.period_ms}
+
+@app.post("/api/safety_threshold")
+async def api_set_safety_threshold(req: SafetyThresholdRequest):
+    bridge.send_set_safety_threshold(req.threshold_mm)
+    return {"success": True, "threshold_mm": req.threshold_mm}
+
+@app.get("/api/safety_threshold")
+async def api_get_safety_threshold():
+    bridge.send_get_safety_threshold()
+    return {
+        "success": True,
+        "threshold_mm": bridge.latest_data.get("safety_threshold_mm", 150),
+        "threshold_cm": bridge.latest_data.get("safety_threshold_cm", 15.0)
+    }
+
+@app.post("/api/stop_motion")
+async def api_stop_motion():
+    bridge.send_stop_motion()
+    return {"success": True}
 
 @app.get("/api/ports")
 async def api_get_ports():
@@ -677,6 +862,32 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif action == "stop":
                 bridge.send_dual_motor(0, 0)
+
+            elif action == "set_heading":
+                target_yaw = float(data.get("target_yaw", 0.0))
+                speed = int(data.get("speed", 0))
+                is_hb = bool(data.get("heartbeat", False))
+                bridge.send_set_heading(target_yaw, speed, quiet=is_hb)
+
+            elif action == "set_sweep":
+                enable = bool(data.get("enable", True))
+                amp = float(data.get("amplitude", 20.0))
+                period_ms = int(data.get("period_ms", 2000))
+                bridge.send_set_sweep(enable, amp, period_ms)
+
+            elif action == "stop_motion":
+                bridge.send_stop_motion()
+
+            elif action == "set_turn_speed":
+                turn_speed = int(data.get("turn_speed", 90))
+                bridge.send_set_turn_speed(turn_speed)
+
+            elif action == "set_safety_threshold":
+                threshold_mm = int(data.get("threshold_mm", 150))
+                bridge.send_set_safety_threshold(threshold_mm)
+
+            elif action == "get_safety_threshold":
+                bridge.send_get_safety_threshold()
 
             elif action == "relay":
                 relay_id = int(data.get("relay_id", 1))

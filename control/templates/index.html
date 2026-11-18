@@ -4,53 +4,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>{{ title }}</title>
+  <title>{{ title or "Mechatronics-4 機器人自主導航除錯平台" }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
   <style>
     :root {
-      --bg-dark: #0b1120;
-      --card-bg: #1e293b;
-      --card-border: #334155;
+      --bg-dark: #090d16;
+      --card-bg: #111827;
+      --card-header: #1a2234;
+      --card-border: #243046;
+      --card-border-active: #38bdf8;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
       --accent-blue: #38bdf8;
-      --accent-blue-hover: #0284c7;
-      --accent-green: #22c55e;
-      --accent-yellow: #eab308;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-yellow: #f59e0b;
       --accent-red: #ef4444;
       --accent-purple: #a855f7;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --radius: 10px;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      -webkit-tap-highlight-color: transparent;
     }
 
     body {
       background-color: var(--bg-dark);
       color: var(--text-main);
+      font-family: 'Noto Sans TC', sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
     }
 
-    /* Header & Navbar */
+    /* ============================================================
+       頂部導航與狀態欄
+       ============================================================ */
     header {
-      background-color: #0f172a;
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--card-border);
-      padding: 0.75rem 1.25rem;
+      padding: 0.6rem 1.25rem;
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 0.75rem;
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
 
     .brand {
@@ -58,815 +66,230 @@
       align-items: center;
       gap: 0.6rem;
       font-size: 1.15rem;
-      font-weight: 700;
+      font-weight: 800;
+      color: var(--text-main);
       letter-spacing: 0.5px;
-      color: var(--accent-blue);
     }
 
-    .brand svg {
-      width: 26px;
-      height: 26px;
-      fill: currentColor;
+    .brand-tag {
+      background: linear-gradient(135deg, #0284c7, #7e22ce);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .mode-badge-box {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hardware-mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: #38bdf8;
+      transition: all 0.2s;
+    }
+
+    .hardware-mode-badge.sweep {
+      border-color: #a855f7;
+      color: #d8b4fe;
+      background: rgba(168, 85, 247, 0.15);
+    }
+
+    .hardware-mode-badge.danger {
+      border-color: #ef4444;
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.2);
+      animation: pulseAlert 1.2s infinite;
+    }
+
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(0.98); }
     }
 
     .toolbar {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
       gap: 0.5rem;
+      flex-wrap: wrap;
     }
 
-    select,
-    input[type="text"],
-    input[type="number"] {
-      background-color: #0f172a;
+    select, input[type="text"], input[type="number"] {
+      background: #1e293b;
       border: 1px solid var(--card-border);
       color: var(--text-main);
-      padding: 0.45rem 0.65rem;
+      padding: 0.4rem 0.6rem;
       border-radius: 6px;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border 0.15s;
     }
 
-    select:focus,
-    input:focus {
+    select:focus, input:focus {
       border-color: var(--accent-blue);
     }
 
     .btn {
-      background-color: #334155;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
       color: var(--text-main);
-      border: none;
-      padding: 0.45rem 0.85rem;
+      padding: 0.4rem 0.8rem;
       border-radius: 6px;
-      font-size: 0.88rem;
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.35rem;
-      transition: all 0.2s;
+      transition: all 0.15s;
+      user-select: none;
     }
 
     .btn:hover {
-      background-color: #475569;
+      background: #273549;
+      border-color: #3b82f6;
     }
 
     .btn-primary {
-      background-color: #0284c7;
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
     }
-
-    .btn-primary:hover {
-      background-color: #0369a1;
-    }
+    .btn-primary:hover { background: #0369a1; }
 
     .btn-success {
-      background-color: #16a34a;
+      background: #059669;
+      border-color: #10b981;
+      color: #fff;
     }
-
-    .btn-success:hover {
-      background-color: #15803d;
-    }
+    .btn-success:hover { background: #047857; }
 
     .btn-danger {
-      background-color: #dc2626;
+      background: #b91c1c;
+      border-color: #ef4444;
+      color: #fff;
     }
-
-    .btn-danger:hover {
-      background-color: #b91c1c;
-    }
+    .btn-danger:hover { background: #991b1b; }
 
     .btn-purple {
-      background-color: #7e22ce;
+      background: #6d28d9;
+      border-color: #a855f7;
+      color: #fff;
     }
+    .btn-purple:hover { background: #5b21b6; }
 
-    .btn-purple:hover {
-      background-color: #6b21a8;
+    .btn-xs {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
     }
 
     .status-badge {
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      padding: 0.3rem 0.65rem;
-      border-radius: 9999px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      background-color: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-
-    .status-badge.connected {
-      background-color: rgba(34, 197, 94, 0.2);
-      color: #86efac;
-      border-color: rgba(34, 197, 94, 0.3);
-    }
-
-    .status-badge.mock {
-      background-color: rgba(168, 85, 247, 0.2);
-      color: #d8b4fe;
-      border-color: rgba(168, 85, 247, 0.3);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: currentColor;
+      background: #64748b;
     }
 
-    /* Tab navigation */
-    .tabs-nav {
-      display: flex;
-      background-color: #0f172a;
-      border-bottom: 1px solid var(--card-border);
-      padding: 0 1.25rem;
-    }
+    .status-badge.connected .status-dot { background: var(--accent-green); box-shadow: 0 0 8px #10b981; }
+    .status-badge.connected { color: #6ee7b7; border-color: #059669; }
+    .status-badge.mock .status-dot { background: var(--accent-purple); box-shadow: 0 0 8px #a855f7; }
+    .status-badge.mock { color: #d8b4fe; border-color: #7c3aed; }
 
-    .tab-btn {
-      padding: 0.75rem 1.25rem;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-    }
-
-    .tab-btn:hover {
-      color: var(--text-main);
-    }
-
-    .tab-btn.active {
-      color: var(--accent-blue);
-      border-bottom-color: var(--accent-blue);
-    }
-
-    /* Main Container */
+    /* ============================================================
+       主要版面格線佈局 (Main Dashboard Grid)
+       ============================================================ */
     main {
+      padding: 1rem;
       flex: 1;
-      padding: 1.25rem;
-      max-width: 1380px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 1700px;
       width: 100%;
       margin: 0 auto;
     }
 
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    /* Cards & Layout */
-    .grid-2 {
+    .dashboard-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.25rem;
-      margin-bottom: 1.25rem;
+      grid-template-columns: 1.1fr 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
     }
 
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.25rem;
-      margin-bottom: 1.25rem;
+    @media (max-width: 1300px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 850px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .card {
-      background-color: var(--card-bg);
+      background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 1.25rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      position: relative;
     }
 
     .card-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: var(--text-main);
-    }
-
-    .card-title .tag {
-      font-size: 0.75rem;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      background: #334155;
-      color: var(--text-muted);
-      font-weight: normal;
-    }
-
-    /* Ultrasonic Cards */
-    .sensor-card {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .sensor-card::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 4px;
-      height: 100%;
-      background: var(--accent-blue);
-    }
-
-    .sensor-card.front::after {
-      background: var(--accent-blue);
-    }
-
-    .sensor-card.right::after {
-      background: var(--accent-purple);
-    }
-
-    .sensor-value-box {
-      display: flex;
-      align-items: baseline;
-      gap: 0.5rem;
-      margin: 0.75rem 0;
-    }
-
-    .sensor-value {
-      font-size: 3rem;
-      font-weight: 800;
-      line-height: 1;
-      font-family: monospace, monospace;
-      color: var(--accent-blue);
-    }
-
-    .sensor-unit {
-      font-size: 1.2rem;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    .sensor-mm-sub {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
-      font-family: monospace;
-    }
-
-    .progress-bar-container {
-      width: 100%;
-      height: 10px;
-      background: #0f172a;
-      border-radius: 5px;
-      overflow: hidden;
-      margin: 0.5rem 0;
-    }
-
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      border-radius: 5px;
-      transition: width 0.2s ease, background-color 0.2s ease;
-    }
-
-    .sensor-status-tag {
-      display: inline-block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      margin-top: 0.25rem;
-    }
-
-    /* Vehicle Top-down Visualizer */
-    .radar-visual-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 1rem 0;
-      background: #0f172a;
-      border-radius: 8px;
-      border: 1px solid #1e293b;
-      min-height: 240px;
-      position: relative;
-    }
-
-    /* Joystick Section */
-    .joystick-panel {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-
-    .joystick-canvas-wrapper {
-      position: relative;
-      touch-action: none;
-      user-select: none;
-      margin: 0.75rem 0;
-    }
-
-    #joystickCanvas {
-      background: #0f172a;
-      border-radius: 50%;
-      box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.15);
-      border: 2px solid var(--card-border);
-      cursor: grab;
-      touch-action: none;
-    }
-
-    #joystickCanvas:active {
-      cursor: grabbing;
-    }
-
-    /* 控制模式切換切換列 */
-    .mode-switch-container {
-      display: flex;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 4px;
-      gap: 6px;
-      margin: 0.5rem 0;
-      width: 100%;
-      max-width: 260px;
-    }
-
-    .mode-switch-btn {
-      flex: 1;
-      padding: 0.45rem 0.6rem;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.35rem;
-      transition: all 0.2s;
-    }
-
-    .mode-switch-btn.active {
-      background: #0284c7;
-      color: #fff;
-      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
-    }
-
-    .mode-switch-btn:hover:not(.active) {
-      background: #1e293b;
-      color: var(--text-main);
-    }
-
-    /* 十字方向鍵控制盤 (D-Pad) */
-    .dpad-container {
-      width: 220px;
-      height: 220px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-      gap: 8px;
-      margin: 0.75rem 0;
-      user-select: none;
-      touch-action: none;
-    }
-
-    .dpad-btn {
-      background: #1e293b;
-      border: 2px solid var(--card-border);
-      border-radius: 12px;
-      color: var(--text-main);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 0.82rem;
-      cursor: pointer;
-      user-select: none;
-      touch-action: none;
-      transition: all 0.1s ease;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    }
-
-    .dpad-btn svg {
-      width: 24px;
-      height: 24px;
-      fill: currentColor;
-      margin-bottom: 2px;
-    }
-
-    .dpad-btn:hover {
-      background: #334155;
-      border-color: var(--accent-blue);
-      color: #fff;
-    }
-
-    .dpad-btn:active,
-    .dpad-btn.active {
-      background: var(--accent-blue);
-      color: #0f172a;
-      transform: scale(0.93);
-      box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
-      border-color: #7dd3fc;
-    }
-
-    .dpad-btn.dpad-stop {
-      background: #3f1d24;
-      border-color: #991b1b;
-      color: #fca5a5;
-    }
-
-    .dpad-btn.dpad-stop:hover {
-      background: #7f1d1d;
-      color: #fff;
-    }
-
-    .dpad-btn.dpad-stop:active,
-    .dpad-btn.dpad-stop.active {
-      background: var(--accent-red);
-      color: #fff;
-      transform: scale(0.93);
-      box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-    }
-
-    .dpad-up {
-      grid-column: 2;
-      grid-row: 1;
-    }
-
-    .dpad-left {
-      grid-column: 1;
-      grid-row: 2;
-    }
-
-    .dpad-stop {
-      grid-column: 2;
-      grid-row: 2;
-    }
-
-    .dpad-right {
-      grid-column: 3;
-      grid-row: 2;
-    }
-
-    .dpad-down {
-      grid-column: 2;
-      grid-row: 3;
-    }
-
-    .joystick-stats {
-      display: flex;
-      gap: 1.5rem;
-      margin-top: 0.75rem;
-      font-family: monospace;
       font-size: 0.95rem;
-      background: #0f172a;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      border: 1px solid var(--card-border);
-    }
-
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .stat-label {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-
-    .stat-val {
-      font-size: 1.1rem;
       font-weight: 700;
-      color: var(--accent-blue);
-    }
-
-    /* Keyboard shortcuts helper */
-    .kbd-grid {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.35rem;
-      margin-top: 1rem;
-    }
-
-    .kbd-row {
-      display: flex;
-      gap: 0.35rem;
-    }
-
-    .kbd-key {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 42px;
-      height: 42px;
-      background: #334155;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 0.9rem;
-      color: var(--text-main);
-      box-shadow: 0 3px 0 #1e293b;
-      user-select: none;
-      transition: all 0.1s;
-    }
-
-    .kbd-key.active {
-      transform: translateY(3px);
-      box-shadow: 0 0 0 #1e293b;
-      background: var(--accent-blue);
-      color: #0f172a;
-    }
-
-    .kbd-space {
-      width: 140px;
-    }
-
-    /* Advanced Tab Controls */
-    .motor-control-group {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .motor-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.75rem;
-    }
-
-    .motor-speed-badge {
-      font-family: monospace;
-      font-size: 1.1rem;
-      font-weight: 700;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
-      background: #1e293b;
-      color: var(--accent-blue);
-    }
-
-    .slider-row {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 0.75rem 0;
-    }
-
-    .slider-row input[type="range"] {
-      flex: 1;
-      height: 8px;
-      border-radius: 4px;
-      background: #334155;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .motor-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-
-    /* Direct HEX command sender */
-    .hex-input-box {
-      width: 100%;
-      font-family: monospace;
-      font-size: 1.05rem;
-      padding: 0.75rem;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      color: #38bdf8;
-      letter-spacing: 1px;
-    }
-
-    .hex-presets {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      margin: 0.75rem 0;
-    }
-
-    .preset-chip {
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-      padding: 0.3rem 0.6rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .preset-chip:hover {
-      background: #334155;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.5rem;
       color: var(--text-main);
-      border-color: var(--accent-blue);
     }
 
-    /* Terminal Console */
-    .terminal-box {
-      background: #070b14;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      height: 320px;
-      overflow-y: auto;
-      padding: 0.75rem;
-      font-family: Consolas, Monaco, "Courier New", monospace;
-      font-size: 0.82rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .log-line {
-      display: flex;
-      gap: 0.5rem;
-      line-height: 1.4;
-      word-break: break-all;
-    }
-
-    .log-time {
-      color: #64748b;
-      flex-shrink: 0;
-    }
-
-    .log-tag {
-      font-weight: 700;
-      padding: 0 0.3rem;
-      border-radius: 3px;
-      flex-shrink: 0;
-    }
-
-    .log-tag.TX {
-      background: rgba(56, 189, 248, 0.2);
-      color: #38bdf8;
-    }
-
-    .log-tag.RX {
-      background: rgba(34, 197, 94, 0.2);
-      color: #4ade80;
-    }
-
-    .log-tag.SYS {
-      background: rgba(234, 179, 8, 0.2);
-      color: #facc15;
-    }
-
-    .log-hex {
-      color: #94a3b8;
-      font-size: 0.8rem;
-      flex-shrink: 0;
-    }
-
-    .log-desc {
-      color: #e2e8f0;
-    }
-
-    /* Utility */
-    .flex-between {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .gap-1 {
-      gap: 0.5rem;
-    }
-
-    .gap-2 {
-      gap: 1rem;
-    }
-
-    .mt-1 {
-      margin-top: 0.5rem;
-    }
-
-    .mt-2 {
-      margin-top: 1rem;
-    }
-
-    .w-full {
-      width: 100%;
-    }
-
-    @media (max-width: 768px) {
-      header {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .toolbar {
-        justify-content: space-between;
-      }
-
-      .sensor-value {
-        font-size: 2.4rem;
-      }
-    }
-
-    /* ============================================== */
-    /* 實時影像監控器 (Live Video Stream) 樣式        */
-    /* ============================================== */
-    .video-card {
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      transition: all 0.3s ease;
-    }
-
-    .video-card.theater-mode {
-      grid-column: 1 / -1;
-    }
-
-    .live-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.15rem 0.55rem;
-      border-radius: 9999px;
-      background-color: rgba(34, 197, 94, 0.15);
-      border: 1px solid rgba(34, 197, 94, 0.35);
-      color: #4ade80;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-
-    .live-pulse {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background-color: #22c55e;
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-      animation: pulse-green 1.8s infinite;
-    }
-
-    @keyframes pulse-green {
-      0% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-      }
-
-      70% {
-        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
-      }
-
-      100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-      }
-    }
-
-    .video-actions {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-    }
-
-    .btn-xs {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-    }
-
+    /* ============================================================
+       卡片 1: 實時影像與戰術雷達
+       ============================================================ */
     .video-container {
-      position: relative;
       width: 100%;
-      background: #020617;
+      position: relative;
+      background: #000;
       border-radius: 8px;
       overflow: hidden;
-      border: 1px solid #1e293b;
-      aspect-ratio: 4 / 3;
-      min-height: 250px;
-      max-height: 480px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
-    }
-
-    .video-card.theater-mode .video-container {
       aspect-ratio: 16 / 9;
-      max-height: 600px;
+      border: 1px solid #1f2937;
     }
 
     .camera-iframe {
@@ -874,551 +297,336 @@
       height: 100%;
       border: none;
       display: block;
-      background: #000;
     }
 
-    .video-container:fullscreen {
-      width: 100vw;
-      height: 100vh;
-      border-radius: 0;
-      border: none;
-      aspect-ratio: unset;
-      max-height: unset;
-      background: #000;
-    }
-
-    .video-container:fullscreen .camera-iframe {
-      width: 100%;
-      height: 100%;
-    }
-
-    .video-container:-webkit-full-screen {
-      width: 100vw;
-      height: 100vh;
-      border-radius: 0;
-      border: none;
-      aspect-ratio: unset;
-      max-height: unset;
-      background: #000;
-    }
-
-    .video-container:-webkit-full-screen .camera-iframe {
-      width: 100%;
-      height: 100%;
-    }
-
-    .stream-settings-panel {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
+    .radar-visual-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0f1d;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
       padding: 0.75rem;
-      margin-bottom: 0.75rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      font-size: 0.82rem;
-    }
-
-    .stream-url-row {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .stream-url-input {
-      flex: 1;
-      min-width: 220px;
-      font-family: monospace;
-      font-size: 0.8rem;
-    }
-
-    .stream-help-box {
-      background: #1e293b;
-      border-radius: 4px;
-      padding: 0.5rem 0.65rem;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
-
-    .stream-help-box code {
-      font-family: monospace;
-      color: var(--accent-blue);
-      background: #0f172a;
-      padding: 0.1rem 0.3rem;
-      border-radius: 3px;
-    }
-
-    .video-info-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 0.6rem;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .stream-url-text {
-      font-family: monospace;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 70%;
-    }
-
-    .stream-tip {
-      color: var(--accent-blue);
-      font-weight: 500;
-    }
-
-    .sensor-column {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    /* ============================================== */
-    /* 🧭 IMU 姿態與航向儀卡片樣式                    */
-    /* ============================================== */
-    .imu-compass-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 0.5rem 0;
-    }
-
-    .compass-container {
       position: relative;
-      width: 150px;
-      height: 150px;
+    }
+
+    .radar-legend {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .radar-legend-item {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 5px;
     }
 
-    #imuCompassSvg {
-      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.2));
+    .legend-color {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
     }
 
-    .compass-needle {
-      transform-origin: 80px 80px;
-      transition: transform 0.12s ease-out;
+    /* ============================================================
+       卡片 2: 極座標航向與速度搖桿 (Polar Heading Joystick)
+       ============================================================ */
+    .joystick-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
     }
 
-    .imu-data-grid {
+    .polar-canvas-wrapper {
+      position: relative;
+      width: 270px;
+      height: 270px;
+      background: #090e1a;
+      border-radius: 50%;
+      border: 2px solid #1e293b;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.08);
+      touch-action: none;
+      user-select: none;
+      cursor: crosshair;
+    }
+
+    #polarCanvas {
+      width: 270px;
+      height: 270px;
+      display: block;
+      border-radius: 50%;
+    }
+
+    .polar-readout-hud {
+      width: 100%;
+      background: #0d1322;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0.5rem;
-      width: 100%;
-      margin: 0.75rem 0 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
     }
 
-    .imu-stat-tile {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      padding: 0.45rem 0.6rem;
+    .hud-stat-box {
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
 
-    .imu-stat-tile .tile-title {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-
-    .imu-stat-tile .tile-val {
-      font-family: monospace;
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--accent-blue);
-      margin-top: 2px;
-    }
-
-    .imu-cardinal-badge {
-      display: inline-block;
-      font-size: 0.8rem;
-      font-weight: 700;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      color: var(--accent-blue);
-      margin-top: 0.35rem;
-    }
-
-    .auto-correct-banner {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 0.65rem 0.85rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      margin-top: 0.6rem;
-      width: 100%;
-    }
-
-    .toggle-switch-btn {
-      padding: 0.35rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      border: 1px solid #475569;
-      background: #1e293b;
-      color: var(--text-muted);
-      transition: all 0.2s;
-    }
-
-    .toggle-switch-btn.active {
-      background: rgba(34, 197, 94, 0.2);
-      border-color: #22c55e;
-      color: #86efac;
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-    }
-
-    /* ============================================== */
-    /* 📱 手機/平板無人機雙搖桿全螢幕控制介面樣式     */
-    /* ============================================== */
-    .drone-controller-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: #060913;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
-    }
-
-    .drone-hud-header {
-      height: 48px;
-      background: rgba(15, 23, 42, 0.95);
-      border-bottom: 1px solid var(--card-border);
-      padding: 0 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-      backdrop-filter: blur(8px);
-    }
-
-    .drone-hud-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      font-weight: 700;
-      font-size: 0.95rem;
-      color: var(--accent-blue);
-      letter-spacing: 0.5px;
-    }
-
-    .drone-hud-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .drone-main-stage {
-      flex: 1;
-      display: flex;
-      align-items: stretch;
-      justify-content: space-between;
-      overflow: hidden;
-      padding: 0.5rem;
-      gap: 0.5rem;
-    }
-
-    /* 左右雙搖桿欄位 */
-    .drone-stick-column {
-      width: 210px;
-      flex-shrink: 0;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 0.75rem 0.5rem;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    }
-
-    .stick-label-badge {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 90%;
-      background: #1e293b;
-      padding: 0.35rem 0.6rem;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text-main);
-      margin-bottom: 0.5rem;
-    }
-
-    .stick-val {
-      font-family: monospace;
-      color: var(--accent-blue);
-      font-size: 0.95rem;
-      font-weight: 700;
-    }
-
-    .drone-stick-zone {
-      position: relative;
-      touch-action: none;
-      user-select: none;
-      margin: 0.35rem 0;
-    }
-
-    .stick-hint {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-align: center;
-      margin-top: 0.4rem;
-      line-height: 1.2;
-    }
-
-    /* 中央視訊與操作欄 */
-    .drone-center-column {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 0.5rem;
-      overflow: hidden;
-    }
-
-    .drone-fpv-wrapper {
-      position: relative;
-      flex: 1;
-      min-height: 180px;
-      background: #000;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid #1e293b;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-    }
-
-    .drone-fpv-wrapper .camera-iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      display: block;
-    }
-
-    /* 視訊上層 HUD */
-    .drone-fpv-hud-top {
-      position: absolute;
-      top: 8px;
-      left: 10px;
-      right: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    .drone-hud-compass-chip {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      border-radius: 20px;
-      padding: 0.25rem 0.65rem;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.8rem;
-      backdrop-filter: blur(4px);
-    }
-
-    .drone-hud-sensor-chips {
-      display: flex;
-      gap: 0.4rem;
-    }
-
-    .hud-chip {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      padding: 0.2rem 0.5rem;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      backdrop-filter: blur(4px);
-    }
-
-    .hud-chip strong {
-      font-family: monospace;
-      color: var(--text-main);
-    }
-
-    .hud-chip.danger {
-      border-color: #ef4444;
-      background: rgba(239, 68, 68, 0.25);
-      color: #fca5a5;
-    }
-
-    .hud-chip.danger strong {
-      color: #ef4444;
-    }
-
-    /* 中央核心操作控制列 (包含繼電器) */
-    .drone-center-controls {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 0.5rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      flex-shrink: 0;
-    }
-
-    /* 💡 大型高科技感繼電器開關按鈕 */
-    .relay-power-btn {
-      flex: 1;
-      max-width: 260px;
-      height: 48px;
-      background: #1e293b;
-      border: 2px solid #334155;
-      border-radius: 8px;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.65rem;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      user-select: none;
-    }
-
-    .relay-power-btn:active {
-      transform: scale(0.97);
-    }
-
-    .relay-power-btn.active {
-      background: rgba(34, 197, 94, 0.2);
-      border-color: #22c55e;
-      color: #86efac;
-      box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
-    }
-
-    .relay-power-btn.active .relay-power-icon svg {
-      stroke: #22c55e;
-      filter: drop-shadow(0 0 4px #22c55e);
-    }
-
-    .relay-power-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .relay-power-text {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      line-height: 1.2;
-    }
-
-    .relay-title {
+    .hud-label {
       font-size: 0.72rem;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
-    .relay-status-text {
-      font-size: 0.92rem;
-      font-weight: 700;
+    .hud-val {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--accent-blue);
+    }
+
+    .quick-angle-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+      width: 100%;
+    }
+
+    .angle-chip {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.35rem 0.2rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .angle-chip:hover {
+      background: #0284c7;
+      border-color: #38bdf8;
       color: #fff;
     }
 
-    .drone-sub-actions {
+    .manual-nav-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      width: 100%;
+    }
+
+    .manual-nav-row input {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ============================================================
+       卡片 3: 擺頭清掃 & 安全防撞 & 感測器遙測
+       ============================================================ */
+    .module-subcard {
+      background: #0d1322;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .module-subcard-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slider-row {
       display: flex;
       align-items: center;
       gap: 0.6rem;
+      font-size: 0.8rem;
     }
 
-    .drone-power-limiter {
-      display: flex;
-      align-items: center;
-      background: #1e293b;
-      border-radius: 6px;
-      padding: 2px 4px;
-      gap: 3px;
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    .slider-val-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #38bdf8;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .sensor-tile {
+      background: #111827;
       border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
-    .drone-pwr-chip {
-      background: transparent;
-      border: none;
+    .sensor-tile-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
+    }
+
+    .sensor-tile-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .sensor-tile-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 3px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent-green);
+      transition: width 0.15s, background-color 0.15s;
+    }
+
+    /* ============================================================
+       底部: 低階通訊與日誌終端
+       ============================================================ */
+    .terminal-container {
+      background: #090e1a;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      height: 140px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 0.5rem;
+      line-height: 1.35;
+      word-break: break-all;
+    }
+
+    .log-time { color: #64748b; min-width: 65px; }
+    .log-dir-tx { color: #38bdf8; font-weight: 700; }
+    .log-dir-rx { color: #10b981; font-weight: 700; }
+    .log-dir-sys { color: #f59e0b; font-weight: 700; }
+    .log-hex { color: #94a3b8; font-size: 0.72rem; margin-left: auto; }
+
+    .stream-settings-box {
+      display: none;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.6rem;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    /* 快捷切換 Toggle Switch */
+    .switch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.15s;
     }
 
-    .drone-pwr-chip.active {
-      background: #0284c7;
+    .switch-btn.active {
+      background: #a855f7;
+      border-color: #c084fc;
       color: #fff;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
     }
 
-    @media (orientation: portrait) and (max-width: 900px) {
-      .drone-main-stage {
-        flex-direction: column;
-      }
-
-      .drone-stick-column {
-        width: 100%;
-        height: 160px;
-      }
+    .switch-btn.relay-active {
+      background: #059669;
+      border-color: #34d399;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
     }
   </style>
 </head>
 
 <body>
 
+  <!-- ==================== 頂部控制列 ==================== -->
   <header>
     <div class="brand">
-      <svg viewBox="0 0 24 24">
-        <path
-          d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-4.66l.12-.34h13.77l.11.34V17zM7.5 14c.83 0 1.5.67 1.5 1.5S8.33 17 7.5 17 6 16.33 6 15.5 6.67 14 7.5 14zm9 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z" />
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="#38bdf8">
+        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18 2.5 2.5 0 0 0 10 15.5 2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5" />
       </svg>
-      <span>Car Monitoring System</span>
+      <span>Mechatronics-4</span>
+      <span class="brand-tag">Autonomous Debug</span>
     </div>
 
+    <!-- 即時底層運作狀態標籤 -->
+    <div class="mode-badge-box">
+      <span id="hardwareModeBadge" class="hardware-mode-badge" title="Arduino 底層當前運動狀態">
+        <span id="hardwareModeDot" class="status-dot" style="background:#38bdf8;"></span>
+        <span id="hardwareModeText">MANUAL (手動)</span>
+      </span>
+    </div>
+
+    <!-- 序列埠連線與工具按鈕 -->
     <div class="toolbar">
       <select id="portSelect" title="序列埠選擇">
         <option value="">搜尋 COM 埠中...</option>
       </select>
+      <button id="refreshPortsBtn" class="btn" title="重新整理序列埠列表">🔄</button>
 
-      <button id="refreshPortsBtn" class="btn" title="重新整理序列埠">🔄</button>
-
-      <select id="baudSelect" title="鮑率 (Baudrate)">
+      <select id="baudSelect" title="鮑率">
         <option value="9600" selected>9600</option>
         <option value="19200">19200</option>
         <option value="38400">38400</option>
@@ -1427,12 +635,11 @@
       </select>
 
       <button id="connectBtn" class="btn btn-primary">🔌 連線</button>
-      <button id="mockBtn" class="btn btn-purple" title="無硬體時切換虛擬模擬模式">✨ 模擬模式</button>
+      <button id="mockBtn" class="btn btn-purple" title="切換虛擬模擬模式">✨ 模擬</button>
 
-      <button id="openDroneViewBtn" class="btn btn-primary" onclick="openDroneMode()" title="切換為手機/平板雙搖桿無人機駕駛介面"
-        style="background: linear-gradient(135deg, #0284c7, #7e22ce); border: 1px solid #38bdf8;">
-        📱 雙搖桿手把模式
-      </button>
+      <a href="/legacy" class="btn" style="text-decoration:none; color:#c084fc; border-color:#9333ea;" title="開啟舊版完整雙搖桿手動遙控介面">
+        🕹️ 傳統遙控 (/legacy) ↗
+      </a>
 
       <div id="connStatus" class="status-badge">
         <span class="status-dot"></span>
@@ -1441,608 +648,343 @@
     </div>
   </header>
 
-  <nav class="tabs-nav">
-    <button class="tab-btn active" data-tab="tab-main">🎮 主要操控與影像監控</button>
-    <button class="tab-btn" data-tab="tab-advanced">⚙️ 進階控制 (單馬達 / HEX)</button>
-    <button class="tab-btn" onclick="openDroneMode()" style="color:#c084fc;">📱 平板雙搖桿駕駛模式 ↗</button>
-  </nav>
-
+  <!-- ==================== 主儀表板格線 ==================== -->
   <main>
-    <section id="tab-main" class="tab-content active">
-      <div class="grid-2">
-        <div class="card video-card" id="videoCard">
-          <div class="card-title">
-            <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span>📹 Live Stream</span>
-              <span class="live-pill" id="livePill">
-                <span class="live-pulse"></span>
-                <span>LIVE</span>
-              </span>
-            </div>
-            <div class="video-actions">
-              <button id="toggleStreamSettingsBtn" class="btn btn-xs" title="串流設定">⚙️ 設定</button>
-              <button id="reloadStreamBtn" class="btn btn-xs" title="重新整理串流">🔄 重載</button>
-              <button id="theaterModeBtn" class="btn btn-xs" title="劇院寬螢幕模式切換">📐 劇院</button>
-              <button id="fullscreenVideoBtn" class="btn btn-xs" title="全螢幕顯示">⛶ 全螢幕</button>
-              <a id="openStreamLink" href="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0"
-                target="_blank" class="btn btn-xs" title="在新分頁獨立開啟">↗ 另開</a>
-            </div>
-          </div>
+    <div class="dashboard-grid">
 
-          <div id="streamSettingsPanel" class="stream-settings-panel" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-weight:600; color:var(--text-main);">串流來源設定</span>
-              <span style="font-size:0.75rem; color:var(--text-muted);">支援 MediaMTX WebRTC / HLS</span>
-            </div>
-            <div class="stream-url-row">
-              <input type="text" id="streamUrlInput" class="stream-url-input"
-                value="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0"
-                placeholder="輸入串流網址 (例如 http://...:8889/live/stream/?network-caching=0)">
-              <button id="saveStreamUrlBtn" class="btn btn-primary btn-xs">💾 套用</button>
-              <button id="useHostStreamBtn" class="btn btn-xs" title="依當前瀏覽器網址的 Hostname 自動替換">⚡ 當前主機 IP</button>
-              <button id="resetStreamUrlBtn" class="btn btn-xs" title="重設為預設 mechatronic-4-6.local">↺ 預設</button>
-            </div>
-            <div class="stream-help-box">
-              💡 <strong>小提示</strong>：若無法顯示影像，請確認 Raspberry Pi 已啟動 MediaMTX 與 FFmpeg 串流。<br>
-              若使用區網 IP 連線（例如 <code>http://192.168.x.x:8000</code>），請點擊「<strong>⚡ 當前主機 IP</strong>」。
-            </div>
-          </div>
-
-          <div class="video-container" id="videoContainer">
-            <iframe id="cameraIframe" class="camera-iframe"
-              src="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0"
-              allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="eager"
-              title="MediaMTX WebRTC 實時影像串流">
-            </iframe>
-          </div>
-
-          <div class="video-info-footer">
-            <span id="currentStreamUrlDisplay" class="stream-url-text" title="當前讀取串流位址">
-              串流: http://mechatronic-4-6.local:8889/live/stream/?network-caching=0
-            </span>
-            <span class="stream-tip">低延遲即時傳輸 (WebRTC / RTSP)</span>
+      <!-- ================= 欄位 1: 實時串流視野與戰術雷達 ================= -->
+      <div class="card">
+        <div class="card-title">
+          <span>📹 鏡頭視野與 2D 戰術雷達</span>
+          <div style="display:flex; gap:0.3rem;">
+            <button id="streamSettingsBtn" class="btn btn-xs" title="設定串流來源">⚙️ 設定</button>
+            <button id="reloadStreamBtn" class="btn btn-xs" title="重載串流">🔄 重載</button>
           </div>
         </div>
 
-        <div class="card joystick-panel">
-          <div class="flex-between w-full">
-            <span id="controlModeTitle" style="font-weight:600; color:var(--text-main);">🕹️ 雙馬達虛擬搖桿</span>
-            <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;">
-              <span style="color:var(--text-muted);">動力上限:</span>
-              <select id="maxPowerSelect" style="padding:0.2rem 0.4rem;">
-                <option value="45">20% (45)</option>
-                <option value="100">40% (100)</option>
-                <option value="150">60% (150)</option>
-                <option value="200" selected>80% (200)</option>
-                <option value="255">100% (255)</option>
-              </select>
+        <!-- 串流設定面板 -->
+        <div id="streamSettingsPanel" class="stream-settings-box">
+          <div style="font-size:0.75rem; color:var(--text-muted);">MediaMTX 串流網址:</div>
+          <div style="display:flex; gap:0.4rem;">
+            <input type="text" id="streamUrlInput" style="flex:1;" value="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0">
+            <button id="saveStreamUrlBtn" class="btn btn-primary btn-xs">套用</button>
+            <button id="useHostStreamBtn" class="btn btn-xs" title="使用當前主機 IP">⚡ 當前 IP</button>
+          </div>
+        </div>
+
+        <!-- 實時視訊 iframe -->
+        <div class="video-container" id="videoContainer">
+          <iframe id="cameraIframe" class="camera-iframe"
+            src="http://mechatronic-4-6.local:8889/live/stream/?network-caching=0"
+            allow="autoplay; fullscreen" loading="eager" title="MediaMTX Live Stream">
+          </iframe>
+        </div>
+
+        <!-- 2D SVG 車輛動態戰術雷達 (含防撞安全虛線圈) -->
+        <div class="radar-visual-box">
+          <div class="radar-legend">
+            <div class="radar-legend-item">
+              <span class="legend-color" style="background:#38bdf8;"></span>
+              <span>前方超音波</span>
+            </div>
+            <div class="radar-legend-item">
+              <span class="legend-color" style="background:#a855f7;"></span>
+              <span>右方超音波</span>
+            </div>
+            <div class="radar-legend-item">
+              <span class="legend-color" style="background:#ef4444; border:1px dashed #fca5a5;"></span>
+              <span>防撞安全警戒圈</span>
             </div>
           </div>
 
-          <div id="joystickWrapper" class="joystick-canvas-wrapper">
-            <canvas id="joystickCanvas" width="220" height="220"></canvas>
+          <svg id="carRadarSvg" width="280" height="230" viewBox="0 0 280 230">
+            <!-- 距離參考圓環 (50cm, 100cm) -->
+            <circle cx="140" cy="130" r="45" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+            <circle cx="140" cy="130" r="85" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+
+            <!-- 超音波防撞門檻警戒圈 (動態半徑) -->
+            <circle id="radarSafetyCircle" cx="140" cy="130" r="30" fill="rgba(239, 68, 68, 0.08)" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3" />
+
+            <!-- 前方測距波束與數值 -->
+            <polygon id="frontBeam" points="120,70 160,70 175,20 105,20" fill="rgba(56, 189, 248, 0.25)" stroke="#38bdf8" stroke-width="1.5" />
+            <line id="frontBeamLine" x1="140" y1="70" x2="140" y2="20" stroke="#38bdf8" stroke-width="2" stroke-dasharray="2 2" />
+            <text id="frontBeamText" x="140" y="15" fill="#38bdf8" font-size="11" text-anchor="middle" font-family="'JetBrains Mono', monospace">-- cm</text>
+
+            <!-- 右方測距波束與數值 -->
+            <polygon id="rightBeam" points="180,110 180,150 255,165 255,95" fill="rgba(168, 85, 247, 0.25)" stroke="#a855f7" stroke-width="1.5" />
+            <line id="rightBeamLine" x1="180" y1="130" x2="255" y2="130" stroke="#a855f7" stroke-width="2" stroke-dasharray="2 2" />
+            <text id="rightBeamText" x="258" y="134" fill="#a855f7" font-size="11" text-anchor="start" font-family="'JetBrains Mono', monospace">-- cm</text>
+
+            <!-- 車體底盤 (隨當前 Yaw 姿態動態旋轉) -->
+            <g id="radarCarRotator" transform="rotate(0 140 130)">
+              <rect x="100" y="70" width="80" height="120" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2" />
+              <rect x="110" y="80" width="60" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
+              <!-- 四個車輪 -->
+              <rect x="88" y="85" width="10" height="30" rx="3" fill="#64748b" />
+              <rect x="182" y="85" width="10" height="30" rx="3" fill="#64748b" />
+              <rect x="88" y="145" width="10" height="30" rx="3" fill="#64748b" />
+              <rect x="182" y="145" width="10" height="30" rx="3" fill="#64748b" />
+              <!-- 車頭指示三角形 -->
+              <polygon points="140,85 130,100 150,100" fill="#38bdf8" />
+              <text x="140" y="145" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">ROBOT</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ================= 欄位 2: 極座標航向與速度搖桿 ================= -->
+      <div class="card">
+        <div class="card-title">
+          <span>🧭 極座標航向與速度搖桿</span>
+          <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+            <span style="font-size:0.75rem; color:var(--text-muted);">動力上限:</span>
+            <select id="maxPowerSelect" style="padding:0.15rem 0.35rem; font-size:0.75rem;">
+              <option value="100">40% (100)</option>
+              <option value="150">60% (150)</option>
+              <option value="200" selected>80% (200)</option>
+              <option value="255">100% (255)</option>
+            </select>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.3rem;">旋轉轉速:</span>
+            <select id="turnSpeedSelect" style="padding:0.15rem 0.35rem; font-size:0.75rem;">
+              <option value="60">溫和 (60)</option>
+              <option value="90" selected>平穩 (90 - 預設)</option>
+              <option value="120">快速 (120)</option>
+              <option value="150">極限 (150)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="joystick-section">
+          <!-- 向量搖桿 Canvas 區域 -->
+          <div class="polar-canvas-wrapper" id="polarCanvasWrapper">
+            <canvas id="polarCanvas" width="270" height="270"></canvas>
           </div>
 
-          <div id="dpadWrapper" class="dpad-container" style="display:none;">
-            <button id="dpadUp" class="dpad-btn dpad-up" title="前進 (按住前進，放開停止)">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 4l-8 8h6v8h4v-8h6z" />
-              </svg>
-              <span>前進</span>
-            </button>
-            <button id="dpadLeft" class="dpad-btn dpad-left" title="原地左轉 (按住旋轉，放開停止)">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 12l8-8v6h8v4h-8v6z" />
-              </svg>
-              <span>左轉</span>
-            </button>
-            <button id="dpadStop" class="dpad-btn dpad-stop" title="停止雙輪">
-              <svg viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-              <span>停止</span>
-            </button>
-            <button id="dpadRight" class="dpad-btn dpad-right" title="原地右轉 (按住旋轉，放開停止)">
-              <svg viewBox="0 0 24 24">
-                <path d="M20 12l-8-8v6H4v4h8v6z" />
-              </svg>
-              <span>右轉</span>
-            </button>
-            <button id="dpadDown" class="dpad-btn dpad-down" title="後退 (按住後退，放開停止)">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 20l8-8h-6V4h-4v8H4z" />
-              </svg>
-              <span>後退</span>
-            </button>
-          </div>
-
-          <div class="mode-switch-container">
-            <button id="modeJoystickBtn" class="mode-switch-btn active" onclick="switchControlMode('joystick')">
-              🕹️ 虛擬搖桿
-            </button>
-            <button id="modeButtonsBtn" class="mode-switch-btn" onclick="switchControlMode('buttons')">
-              🎛️ 方向按鈕
-            </button>
-          </div>
-
-          <div class="joystick-stats">
-            <div class="stat-item">
-              <span class="stat-label">轉向 (Turn)</span>
-              <span id="statTurn" class="stat-val">0</span>
+          <!-- 即時搖桿數值 HUD -->
+          <div class="polar-readout-hud">
+            <div class="hud-stat-box">
+              <span class="hud-label">目標角度 (Target Yaw)</span>
+              <span id="hudTargetYaw" class="hud-val">0.0°</span>
             </div>
-            <div class="stat-item">
-              <span class="stat-label">速度 (Speed)</span>
-              <span id="statSpeed" class="stat-val">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">左輪 (L)</span>
-              <span id="statLeft" class="stat-val">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">右輪 (R)</span>
-              <span id="statRight" class="stat-val">0</span>
+            <div class="hud-stat-box">
+              <span class="hud-label">巡航末速度 (Speed)</span>
+              <span id="hudTargetSpeed" class="hud-val">0</span>
             </div>
           </div>
 
-          <div class="kbd-grid">
-            <div class="kbd-row">
-              <div class="kbd-key" id="keyW">W</div>
-            </div>
-            <div class="kbd-row">
-              <div class="kbd-key" id="keyA">A</div>
-              <div class="kbd-key" id="keyS">S</div>
-              <div class="kbd-key" id="keyD">D</div>
-            </div>
-            <div class="kbd-row">
-              <div class="kbd-key kbd-space" id="keySpace">SPACE (煞車)</div>
-            </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">
+            💡 <strong>操作指南</strong>：推動方向即為朝向角，推移距離換算為速度。<br>
+            放手自動回中並執行指令；<strong>按一下搖桿中央 (或按 Space) 立即緊急煞停</strong>！
+          </div>
+
+          <!-- 常用角度快捷晶片 -->
+          <div class="quick-angle-grid">
+            <button class="angle-chip" onclick="quickSetHeading(0)">0° 正前</button>
+            <button class="angle-chip" onclick="quickSetHeading(45)">+45° 協向</button>
+            <button class="angle-chip" onclick="quickSetHeading(90)">+90° 右</button>
+            <button class="angle-chip" onclick="quickSetHeading(180)">180° 後</button>
+            <button class="angle-chip" onclick="quickSetHeading(-90)">-90° 左</button>
+            <button class="angle-chip" onclick="quickSetHeading(-45)">-45° 協向</button>
+          </div>
+
+          <!-- 手動精確數值導航行 -->
+          <div class="manual-nav-row">
+            <input type="number" id="inputTargetYaw" placeholder="角度 (-180~180)" value="0" step="1">
+            <input type="number" id="inputTargetSpeed" placeholder="速度 (0~255)" value="150" step="5">
+            <button id="sendHeadingBtn" class="btn btn-primary" title="發送目標角度與速度巡航">🎯 定向巡航</button>
+            <button id="alignOnlyBtn" class="btn" title="速度為 0，純原地轉向對準">🔄 純轉向</button>
+            <button id="stopMotionBtn" class="btn btn-danger" title="解除航向並立即煞停">🛑 煞停</button>
           </div>
         </div>
       </div>
 
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-title">
-            <span>🚗 車輛俯視動態探測雷達</span>
-            <button id="pingBtn" class="btn" style="font-size:0.75rem; padding:0.25rem 0.5rem;">📶 Ping 測試</button>
-          </div>
-          <div class="radar-visual-container">
-            <svg id="carRadarSvg" width="280" height="230" viewBox="0 0 280 230">
-              <circle cx="120" cy="130" r="40" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
-              <circle cx="120" cy="130" r="80" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
-
-              <polygon id="frontBeam" points="100,70 140,70 155,20 85,20" fill="rgba(56, 189, 248, 0.25)"
-                stroke="#38bdf8" stroke-width="1.5" />
-              <line id="frontBeamLine" x1="120" y1="70" x2="120" y2="20" stroke="#38bdf8" stroke-width="2"
-                stroke-dasharray="2 2" />
-              <text id="frontBeamText" x="120" y="15" fill="#38bdf8" font-size="11" text-anchor="middle"
-                font-family="monospace">-- cm</text>
-
-              <polygon id="rightBeam" points="160,110 160,150 240,165 240,95" fill="rgba(168, 85, 247, 0.25)"
-                stroke="#a855f7" stroke-width="1.5" />
-              <line id="rightBeamLine" x1="160" y1="130" x2="240" y2="130" stroke="#a855f7" stroke-width="2"
-                stroke-dasharray="2 2" />
-              <text id="rightBeamText" x="250" y="134" fill="#a855f7" font-size="11" text-anchor="start"
-                font-family="monospace">-- cm</text>
-
-              <g id="radarCarRotator" transform="rotate(0 120 130)">
-                <rect x="80" y="70" width="80" height="120" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2" />
-                <rect x="90" y="80" width="60" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
-                <rect x="68" y="85" width="10" height="30" rx="3" fill="#64748b" />
-                <rect x="162" y="85" width="10" height="30" rx="3" fill="#64748b" />
-                <rect x="68" y="145" width="10" height="30" rx="3" fill="#64748b" />
-                <rect x="162" y="145" width="10" height="30" rx="3" fill="#64748b" />
-                <polygon points="120,85 110,100 130,100" fill="#38bdf8" />
-                <text x="120" y="145" fill="#94a3b8" font-size="10" text-anchor="middle">ROBOT</text>
-              </g>
-            </svg>
-          </div>
+      <!-- ================= 欄位 3: 擺頭清掃 & 安全防撞 & 感測器遙測 ================= -->
+      <div class="card">
+        <div class="card-title">
+          <span>🧹 擺頭清掃 & 🛡️ 防撞安全設定</span>
+          <button id="resetYawBtn" class="btn btn-xs" onclick="resetYawHeading()" title="將當前車頭朝向設為基準 0 度">🎯 朝向歸零</button>
         </div>
 
-        <div class="card">
-          <div class="card-title">
-            <span>🧭 MPU-6050 姿態航向儀</span>
-            <button id="resetYawBtn" class="btn btn-xs" onclick="resetYawHeading()" title="將目前方向設為基準 0 度">🎯
-              朝向歸零</button>
+        <!-- 動態擺頭模式 (Sweep Overlay) -->
+        <div class="module-subcard">
+          <div class="module-subcard-title">
+            <span>動態搖擺吸塵模式 (Sweep Overlay)</span>
+            <button id="toggleSweepBtn" class="switch-btn" onclick="toggleSweepMode()">
+              <span>🧹 擺頭: OFF</span>
+            </button>
           </div>
 
-          <div class="imu-compass-box">
-            <div class="compass-container">
-              <svg id="imuCompassSvg" width="145" height="145" viewBox="0 0 160 160">
-                <circle cx="80" cy="80" r="74" fill="#0f172a" stroke="#334155" stroke-width="2" />
-                <circle cx="80" cy="80" r="62" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="3 3" />
-                <circle cx="80" cy="80" r="50" fill="none" stroke="#1e293b" stroke-width="1" />
-
-                <g id="compassRose">
-                  <text x="80" y="24" fill="#ef4444" font-size="12" font-weight="800" text-anchor="middle">N</text>
-                  <text x="142" y="84" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">E</text>
-                  <text x="80" y="146" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">S</text>
-                  <text x="18" y="84" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">W</text>
-                  <line x1="80" y1="26" x2="80" y2="33" stroke="#ef4444" stroke-width="2" />
-                  <line x1="80" y1="127" x2="80" y2="134" stroke="#94a3b8" stroke-width="2" />
-                  <line x1="26" y1="80" x2="33" y2="80" stroke="#94a3b8" stroke-width="2" />
-                  <line x1="127" y1="80" x2="134" y2="80" stroke="#94a3b8" stroke-width="2" />
-                </g>
-
-                <g id="compassNeedle" class="compass-needle" transform="rotate(0 80 80)">
-                  <polygon points="80,32 74,80 86,80" fill="#ef4444" />
-                  <polygon points="80,128 74,80 86,80" fill="#475569" />
-                  <circle cx="80" cy="80" r="7" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
-                  <circle cx="80" cy="80" r="3" fill="#38bdf8" />
-                </g>
-              </svg>
-            </div>
-
-            <div style="display:flex; align-items:baseline; gap:0.4rem; margin-top:0.4rem;">
-              <span id="imuYawDisplay"
-                style="font-size:2.2rem; font-weight:800; font-family:monospace; color:var(--accent-blue); line-height:1;">0.0°</span>
-              <span id="imuCardinalText" class="imu-cardinal-badge">正北 (N)</span>
-            </div>
+          <div class="slider-row">
+            <span style="color:var(--text-muted); min-width:65px;">振幅 (Amp):</span>
+            <input type="range" id="sweepAmpSlider" min="5" max="45" value="20" step="1" oninput="updateSweepLabels()">
+            <span id="sweepAmpVal" class="slider-val-badge">±20°</span>
           </div>
 
-          <div class="imu-data-grid">
-            <div class="imu-stat-tile">
-              <span class="tile-title">俯仰 (Pitch)</span>
-              <span id="imuPitchDisplay" class="tile-val">0.0°</span>
-            </div>
-            <div class="imu-stat-tile">
-              <span class="tile-title">滾轉 (Roll)</span>
-              <span id="imuRollDisplay" class="tile-val">0.0°</span>
-            </div>
+          <div class="slider-row">
+            <span style="color:var(--text-muted); min-width:65px;">週期 (Period):</span>
+            <input type="range" id="sweepPeriodSlider" min="600" max="4000" value="2000" step="100" oninput="updateSweepLabels()">
+            <span id="sweepPeriodVal" class="slider-val-badge">2000ms</span>
           </div>
 
-          <div class="auto-correct-banner">
-            <div style="display:flex; flex-direction:column;">
-              <span style="font-weight:600; font-size:0.85rem; color:var(--text-main);">Auto StraightLine
-                Calibration</span>
-            </div>
-            <button id="autoCorrectToggleBtn" class="toggle-switch-btn" onclick="toggleAutoCorrect()">
-              <span class="status-dot"></span>
-              <span id="autoCorrectBtnText">OFF</span>
+          <div style="display:flex; gap:0.5rem; margin-top:4px;">
+            <button id="toggleRelayBtn" class="switch-btn" style="flex:1;" onclick="toggleRelay()">
+              <span>🌪️ 吸塵馬達 (Relay 1): OFF</span>
+            </button>
+            <button id="comboCleanBtn" class="btn btn-primary btn-xs" onclick="startComboClean()" title="同時開啟動態擺頭與吸塵馬達">
+              ✨ 一鍵清掃
             </button>
           </div>
         </div>
 
-        <div class="sensor-column">
-          <div class="card sensor-card front">
-            <div class="card-title">
-              <span>Front Sensor</span>
+        <!-- 超音波極限防撞門檻 -->
+        <div class="module-subcard">
+          <div class="module-subcard-title">
+            <span>🛡️ 超音波防撞安全門檻 (E-Stop Threshold)</span>
+            <span id="currentThresholdBadge" style="font-family:'JetBrains Mono', monospace; color:#38bdf8; font-weight:700;">15.0 cm</span>
+          </div>
+
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <input type="number" id="inputSafetyThreshMm" value="150" placeholder="毫米 mm (0為關閉)" style="flex:1;">
+            <button id="setSafetyThreshBtn" class="btn btn-primary btn-xs">💾 設定</button>
+            <button id="getSafetyThreshBtn" class="btn btn-xs">🔍 查詢</button>
+          </div>
+
+          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:2px;">
+            <button class="angle-chip" style="flex:1;" onclick="quickSetSafetyThresh(100)">10 cm</button>
+            <button class="angle-chip" style="flex:1;" onclick="quickSetSafetyThresh(150)">15 cm (預設)</button>
+            <button class="angle-chip" style="flex:1;" onclick="quickSetSafetyThresh(250)">25 cm</button>
+            <button class="angle-chip" style="flex:1;" onclick="quickSetSafetyThresh(0)">0 (關閉防撞)</button>
+          </div>
+        </div>
+
+        <!-- 感測器遙測數值 -->
+        <div class="telemetry-grid">
+          <!-- 前方超音波 -->
+          <div class="sensor-tile">
+            <div class="sensor-tile-header">
+              <span>前方超音波</span>
+              <span id="frontStatusTag" style="color:#10b981;">正常</span>
             </div>
-            <div class="sensor-value-box">
-              <span id="frontCm" class="sensor-value">--.-</span>
-              <span class="sensor-unit">cm</span>
+            <div class="sensor-tile-val">
+              <span id="frontCmVal">--.-</span> <span style="font-size:0.8rem; font-weight:500;">cm</span>
             </div>
-            <div class="sensor-mm-sub">
-              精密距離: <span id="frontMm">---</span> mm
-            </div>
-            <div class="progress-bar-container">
-              <div id="frontProgress" class="progress-bar" style="width: 0%; background-color: var(--accent-green);">
-              </div>
-            </div>
-            <div class="flex-between mt-1">
-              <span id="frontStatus" class="sensor-status-tag" style="background:#334155; color:#94a3b8;">等待數據</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">有效範圍: 2 ~ 400 cm</span>
+            <div class="sensor-tile-sub">精密: <span id="frontMmVal">---</span> mm</div>
+            <div class="progress-bar-bg">
+              <div id="frontProgressBar" class="progress-bar-fill"></div>
             </div>
           </div>
 
-          <div class="card sensor-card right">
-            <div class="card-title">
-              <span>Right Sensor</span>
+          <!-- 右方超音波 -->
+          <div class="sensor-tile">
+            <div class="sensor-tile-header">
+              <span>右方超音波</span>
+              <span id="rightStatusTag" style="color:#10b981;">正常</span>
             </div>
-            <div class="sensor-value-box">
-              <span id="rightCm" class="sensor-value">--.-</span>
-              <span class="sensor-unit">cm</span>
+            <div class="sensor-tile-val">
+              <span id="rightCmVal">--.-</span> <span style="font-size:0.8rem; font-weight:500;">cm</span>
             </div>
-            <div class="sensor-mm-sub">
-              精密距離: <span id="rightMm">---</span> mm
-            </div>
-            <div class="progress-bar-container">
-              <div id="rightProgress" class="progress-bar" style="width: 0%; background-color: var(--accent-green);">
-              </div>
-            </div>
-            <div class="flex-between mt-1">
-              <span id="rightStatus" class="sensor-status-tag" style="background:#334155; color:#94a3b8;">等待數據</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">有效範圍: 2 ~ 400 cm</span>
+            <div class="sensor-tile-sub">精密: <span id="rightMmVal">---</span> mm</div>
+            <div class="progress-bar-bg">
+              <div id="rightProgressBar" class="progress-bar-fill"></div>
             </div>
           </div>
+
+          <!-- IMU 偏航角 Yaw -->
+          <div class="sensor-tile">
+            <div class="sensor-tile-header">
+              <span>當前朝向 Yaw</span>
+              <span id="cardinalBadge" style="color:#38bdf8; font-weight:700;">正北 (N)</span>
+            </div>
+            <div class="sensor-tile-val" style="color:var(--accent-blue);">
+              <span id="imuYawVal">0.0</span>°
+            </div>
+            <div class="sensor-tile-sub">基準偏角 (0° = 前方)</div>
+          </div>
+
+          <!-- 姿態 Pitch / Roll -->
+          <div class="sensor-tile">
+            <div class="sensor-tile-header">
+              <span>俯仰 / 滾轉</span>
+              <span>MPU-6050</span>
+            </div>
+            <div class="sensor-tile-val" style="font-size:1.05rem;">
+              P:<span id="imuPitchVal">0.0</span>° R:<span id="imuRollVal">0.0</span>°
+            </div>
+            <div class="sensor-tile-sub">水平姿態監控</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ==================== 底部: 通訊日誌終端與單馬達微調 ==================== -->
+    <div class="card">
+      <div class="card-title">
+        <span>📟 底層硬體除錯與通訊日誌 (Hardware & Packet Monitor)</span>
+        <div style="display:flex; gap:0.4rem;">
+          <button id="pingBtn" class="btn btn-xs">📶 發送 Ping</button>
+          <button id="clearLogBtn" class="btn btn-xs">🧹 清空日誌</button>
         </div>
       </div>
-    </section>
 
-    <section id="tab-advanced" class="tab-content">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">
-            <span>⚙️ 單馬達獨立控制</span>
-            <button id="stopBothMotorsBtn" class="btn btn-danger"
-              style="font-size:0.8rem; padding:0.25rem 0.6rem;">雙輪全停</button>
-          </div>
-
-          <div class="motor-control-group">
-            <div class="motor-header">
-              <span style="font-weight:600; color:#38bdf8;">左馬達</span>
-              <span id="m0ValueBadge" class="motor-speed-badge">0</span>
-            </div>
-            <div class="slider-row">
-              <span style="font-size:0.75rem; color:var(--text-muted);">-255</span>
-              <input type="range" id="m0Slider" min="-255" max="255" value="0">
-              <span style="font-size:0.75rem; color:var(--text-muted);">+255</span>
-            </div>
-            <div class="motor-buttons">
-              <button class="btn" onclick="adjustMotor(0, -50)">-50</button>
-              <button class="btn" onclick="adjustMotor(0, -10)">-10</button>
-              <button class="btn btn-danger" onclick="setMotor(0, 0)">停止 0</button>
-              <button class="btn" onclick="adjustMotor(0, 10)">+10</button>
-              <button class="btn" onclick="adjustMotor(0, 50)">+50</button>
-              <button class="btn btn-primary" onclick="setMotor(0, 200)">正轉 200</button>
-              <button class="btn btn-primary" onclick="setMotor(0, -200)">反轉 -200</button>
-            </div>
-          </div>
-
-          <div class="motor-control-group">
-            <div class="motor-header">
-              <span style="font-weight:600; color:#a855f7;">右馬達</span>
-              <span id="m1ValueBadge" class="motor-speed-badge">0</span>
-            </div>
-            <div class="slider-row">
-              <span style="font-size:0.75rem; color:var(--text-muted);">-255</span>
-              <input type="range" id="m1Slider" min="-255" max="255" value="0">
-              <span style="font-size:0.75rem; color:var(--text-muted);">+255</span>
-            </div>
-            <div class="motor-buttons">
-              <button class="btn" onclick="adjustMotor(1, -50)">-50</button>
-              <button class="btn" onclick="adjustMotor(1, -10)">-10</button>
-              <button class="btn btn-danger" onclick="setMotor(1, 0)">停止 0</button>
-              <button class="btn" onclick="adjustMotor(1, 10)">+10</button>
-              <button class="btn" onclick="adjustMotor(1, 50)">+50</button>
-              <button class="btn btn-primary" onclick="setMotor(1, 200)">正轉 200</button>
-              <button class="btn btn-primary" onclick="setMotor(1, -200)">反轉 -200</button>
-            </div>
-          </div>
-
-          <div class="flex-between"
-            style="padding:0.75rem; background:#0f172a; border-radius:6px; border:1px solid var(--card-border);">
-            <span>💡 Relay</span>
-            <div style="display:flex; gap:0.5rem;">
-              <button id="relayOnBtn" class="btn btn-success" style="font-size:0.8rem;">開啟 ON</button>
-              <button id="relayOffBtn" class="btn btn-danger" style="font-size:0.8rem;">關閉 OFF</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">
-            <span>💻 Direct HEX Sender</span>
-          </div>
-
-          <div style="margin-bottom:0.75rem;">
-            <input type="text" id="hexInput" class="hex-input-box" placeholder="例: AA 01 00 00 00 C8 55 或 01 00 C8">
-          </div>
-
-          <div class="flex-between">
-            <label
-              style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; color:var(--text-muted); cursor:pointer;">
-              <input type="checkbox" id="autoWrapCheck" checked>
-              <span>自動補齊起始 0xAA 與結尾 0x55</span>
-            </label>
-            <button id="sendHexBtn" class="btn btn-primary" style="padding:0.5rem 1.25rem;">🚀 發送 HEX</button>
-          </div>
-
-          <div class="mt-2" style="font-size:0.85rem; color:var(--text-muted);">常用指令預設範本:</div>
-          <div class="hex-presets">
-            <button class="preset-chip" onclick="applyHexPreset('AA 00 55')">Ping (AA 00 55)</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 01 00 00 00 C8 55')">直行前進 200</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 01 00 00 FF 38 55')">後退 -200</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 01 00 C8 00 00 55')">原地逆時針 (左轉)</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 01 FF 38 00 00 55')">原地順時針 (右轉)</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 01 00 00 00 00 55')">雙輪煞停</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 02 00 00 C8 55')">左輪 +200</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 02 01 00 C8 55')">右輪 +200</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 03 01 01 55')">繼電器開</button>
-            <button class="preset-chip" onclick="applyHexPreset('AA 03 01 00 55')">繼電器關</button>
-          </div>
-
-          <div class="flex-between mt-2" style="margin-bottom:0.5rem;">
-            <span style="font-weight:600; font-size:0.95rem;">📟 Terminal</span>
-            <div style="display:flex; gap:0.5rem;">
-              <button id="clearLogBtn" class="btn" style="font-size:0.75rem; padding:0.2rem 0.5rem;">清除日誌</button>
-              <label
-                style="display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
-                <input type="checkbox" id="autoScrollCheck" checked> 自動滾動
-              </label>
-            </div>
-          </div>
-          <div id="terminalConsole" class="terminal-box">
-            <div class="log-line">
-              <span class="log-time">[系統]</span>
-              <span class="log-tag SYS">SYS</span>
-              <span class="log-desc">等待連線中... 請在上方選取 COM 埠並連線。</span>
-            </div>
-          </div>
-        </div>
+      <div class="terminal-container" id="terminalBox">
+        <!-- 即時日誌行將動態插入此處 -->
       </div>
-    </section>
+    </div>
   </main>
 
-  <div id="droneControllerView" class="drone-controller-container" style="display:none;">
-    <div class="drone-hud-header">
-      <div class="drone-hud-brand">
-        <span class="live-pulse"></span>
-        <span>🎮 DRONE FPV CONTROLLER</span>
-        <div id="droneConnStatus" class="status-badge" style="padding:0.15rem 0.5rem; font-size:0.75rem;">
-          <span class="status-dot"></span>
-          <span id="droneConnText">未連線</span>
-        </div>
-      </div>
-      <div class="drone-hud-actions">
-        <button id="droneAutoCorrectToggleBtn" class="toggle-switch-btn" onclick="toggleAutoCorrect()"
-          title="開關直線航向自動校正">
-          <span class="status-dot"></span>
-          <span>直線校正: <strong id="droneAutoCorrectStatus">OFF</strong></span>
-        </button>
-        <button class="btn btn-xs" onclick="resetYawHeading()" title="朝向角度歸零為 0°">🎯 歸零 0°</button>
-        <button class="btn btn-xs" onclick="toggleDroneFullscreen()" title="切換瀏覽器全螢幕">⛶ 全螢幕</button>
-        <button class="btn btn-danger btn-xs" onclick="exitDroneMode()">✕ 返回儀表板</button>
-      </div>
-    </div>
-
-    <div class="drone-main-stage">
-      <div class="drone-stick-column left-stick-column">
-        <div class="stick-label-badge">
-          <span>Speed</span>
-          <span id="leftStickSpeedVal" class="stick-val">0</span>
-        </div>
-        <div class="drone-stick-zone" id="leftStickZone">
-          <canvas id="leftStickCanvas" width="190" height="190"></canvas>
-        </div>
-        <div class="stick-hint">
-          推桿前進 / 後退<br>
-          <span style="color:var(--text-muted); font-size:0.68rem;">放手自動彈回煞停</span>
-        </div>
-      </div>
-
-      <div class="drone-center-column">
-        <div class="drone-fpv-wrapper" id="droneFpvWrapper">
-          <iframe id="droneCameraIframe" class="camera-iframe" src="" allow="autoplay; fullscreen"
-            allowfullscreen></iframe>
-
-          <div class="drone-fpv-hud-top">
-            <div class="drone-hud-compass-chip">
-              <span>🧭 朝向:</span>
-              <strong id="droneHudYawText" style="color:var(--accent-blue);">0.0°</strong>
-              <span id="droneHudCardinalText" style="color:#94a3b8; font-size:0.75rem;">(N)</span>
-            </div>
-
-            <div class="drone-hud-sensor-chips">
-              <div id="droneFrontChip" class="hud-chip">
-                <span>前:</span>
-                <strong id="droneFrontCmText">--.-</strong> cm
-              </div>
-              <div id="droneRightChip" class="hud-chip">
-                <span>右:</span>
-                <strong id="droneRightCmText">--.-</strong> cm
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="drone-center-controls">
-          <button id="droneRelayBtn" class="relay-power-btn" onclick="toggleRelay()">
-            <div class="relay-power-icon">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M12 2v10M18.36 5.64a9 9 0 1 1-12.73 0" stroke-linecap="round" />
-              </svg>
-            </div>
-            <div class="relay-power-text">
-              <span class="relay-title">繼電器開關 (吸塵馬達)</span>
-              <span id="droneRelayStatusLabel" class="relay-status-text">OFF</span>
-            </div>
-          </button>
-
-          <div class="drone-sub-actions">
-            <div class="drone-power-limiter">
-              <span style="font-size:0.75rem; color:var(--text-muted); margin-right:2px;">動力:</span>
-              <button class="drone-pwr-chip" onclick="setDroneMaxPower(50, this)">20%</button>
-              <button class="drone-pwr-chip active" onclick="setDroneMaxPower(100, this)">40%</button>
-              <button class="drone-pwr-chip" onclick="setDroneMaxPower(150, this)">60%</button>
-              <button class="drone-pwr-chip" onclick="setDroneMaxPower(200, this)">80%</button>
-              <button class="drone-pwr-chip" onclick="setDroneMaxPower(255, this)">100%</button>
-            </div>
-
-            <button class="btn btn-danger btn-xs" onclick="droneEmergencyReset()"
-              style="height:36px; padding:0 0.8rem; font-weight:700;" title="斷開 Arduino 序列埠並重新連線 (重啟硬體復位)">
-              🔄 斷開重連
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="drone-stick-column right-stick-column">
-        <div class="stick-label-badge">
-          <span>Turn</span>
-          <span id="rightStickTurnVal" class="stick-val">0</span>
-        </div>
-        <div class="drone-stick-zone" id="rightStickZone">
-          <canvas id="rightStickCanvas" width="190" height="190"></canvas>
-        </div>
-        <div class="stick-hint">
-          推桿左轉 / 右轉<br>
-          <span style="color:var(--text-muted); font-size:0.68rem;">放手自動回中直行</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  <!-- ==================== 前端邏輯 JavaScript ==================== -->
   <script>
-    // ==============================================
-    // 全域變數與 WebSocket 模組
-    // ==============================================
+    // 全域變數
     let ws = null;
     let isConnected = false;
     let isMockMode = false;
     let currentPort = "";
 
-    // IMU 姿態與直線校正狀態
+    // 狀態變數
     let currentYaw = 0.0;
     let currentPitch = 0.0;
     let currentRoll = 0.0;
-    let isAutoCorrectEnabled = false;
-    let currentRelayState = false;
-    let isDroneViewOpen = false;
-    let droneMaxPower = 200;
+    let isSweepEnabled = false;
+    let isRelayOn = false;
+    let safetyThresholdMm = 150;
+    let maxPower = 200;
 
-    // DOM 元素
+    // 極座標搖桿變數
+    let joystickActive = false;
+    let joyStartX = 0;
+    let joyStartY = 0;
+    let joyCurrentX = 0;
+    let joyCurrentY = 0;
+    let joyPointerId = null;
+    let joyClickStartTime = 0;
+    let joyTargetYaw = 0.0;
+    let joyTargetSpeed = 0;
+    let cruiseHeartbeatTimer = null;
+
+    // DOM 元素快取
     const portSelect = document.getElementById('portSelect');
     const baudSelect = document.getElementById('baudSelect');
-    const refreshPortsBtn = document.getElementById('refreshPortsBtn');
     const connectBtn = document.getElementById('connectBtn');
     const mockBtn = document.getElementById('mockBtn');
+    const refreshPortsBtn = document.getElementById('refreshPortsBtn');
     const connStatus = document.getElementById('connStatus');
     const connStatusText = document.getElementById('connStatusText');
+    const hardwareModeBadge = document.getElementById('hardwareModeBadge');
+    const hardwareModeText = document.getElementById('hardwareModeText');
+    const hardwareModeDot = document.getElementById('hardwareModeDot');
 
-    // IMU DOM 元素
-    const imuYawDisplay = document.getElementById('imuYawDisplay');
-    const imuCardinalText = document.getElementById('imuCardinalText');
-    const imuPitchDisplay = document.getElementById('imuPitchDisplay');
-    const imuRollDisplay = document.getElementById('imuRollDisplay');
-    const compassNeedle = document.getElementById('compassNeedle');
-    const autoCorrectToggleBtn = document.getElementById('autoCorrectToggleBtn');
-    const autoCorrectBtnText = document.getElementById('autoCorrectBtnText');
+    // 雷達與視覺
+    const cameraIframe = document.getElementById('cameraIframe');
+    const streamSettingsBtn = document.getElementById('streamSettingsBtn');
+    const streamSettingsPanel = document.getElementById('streamSettingsPanel');
+    const streamUrlInput = document.getElementById('streamUrlInput');
+    const saveStreamUrlBtn = document.getElementById('saveStreamUrlBtn');
+    const useHostStreamBtn = document.getElementById('useHostStreamBtn');
+    const reloadStreamBtn = document.getElementById('reloadStreamBtn');
     const radarCarRotator = document.getElementById('radarCarRotator');
-
-    // 手機/平板無人機手把模式 DOM 元素
-    const droneControllerView = document.getElementById('droneControllerView');
-    const droneConnStatus = document.getElementById('droneConnStatus');
-    const droneConnText = document.getElementById('droneConnText');
-    const droneAutoCorrectToggleBtn = document.getElementById('droneAutoCorrectToggleBtn');
-    const droneAutoCorrectStatus = document.getElementById('droneAutoCorrectStatus');
-    const droneCameraIframe = document.getElementById('droneCameraIframe');
-    const droneHudYawText = document.getElementById('droneHudYawText');
-    const droneHudCardinalText = document.getElementById('droneHudCardinalText');
-    const droneFrontCmText = document.getElementById('droneFrontCmText');
-    const droneRightCmText = document.getElementById('droneRightCmText');
-    const droneFrontChip = document.getElementById('droneFrontChip');
-    const droneRightChip = document.getElementById('droneRightChip');
-    const droneRelayBtn = document.getElementById('droneRelayBtn');
-    const droneRelayStatusLabel = document.getElementById('droneRelayStatusLabel');
-
-    const leftStickCanvas = document.getElementById('leftStickCanvas');
-    const rightStickCanvas = document.getElementById('rightStickCanvas');
-    const leftStickSpeedVal = document.getElementById('leftStickSpeedVal');
-    const rightStickTurnVal = document.getElementById('rightStickTurnVal');
-
-    // 超音波元素
-    const frontCm = document.getElementById('frontCm');
-    const frontMm = document.getElementById('frontMm');
-    const frontProgress = document.getElementById('frontProgress');
-    const frontStatus = document.getElementById('frontStatus');
-
-    const rightCm = document.getElementById('rightCm');
-    const rightMm = document.getElementById('rightMm');
-    const rightProgress = document.getElementById('rightProgress');
-    const rightStatus = document.getElementById('rightStatus');
-
-    // 雷達 SVG 元素
+    const radarSafetyCircle = document.getElementById('radarSafetyCircle');
     const frontBeam = document.getElementById('frontBeam');
     const frontBeamLine = document.getElementById('frontBeamLine');
     const frontBeamText = document.getElementById('frontBeamText');
@@ -2050,49 +992,62 @@
     const rightBeamLine = document.getElementById('rightBeamLine');
     const rightBeamText = document.getElementById('rightBeamText');
 
-    // 搖桿與控制元素
-    const joystickCanvas = document.getElementById('joystickCanvas');
+    // 搖桿與導航
+    const polarCanvas = document.getElementById('polarCanvas');
+    const polarCanvasWrapper = document.getElementById('polarCanvasWrapper');
+    const hudTargetYaw = document.getElementById('hudTargetYaw');
+    const hudTargetSpeed = document.getElementById('hudTargetSpeed');
     const maxPowerSelect = document.getElementById('maxPowerSelect');
-    const statTurn = document.getElementById('statTurn');
-    const statSpeed = document.getElementById('statSpeed');
-    const statLeft = document.getElementById('statLeft');
-    const statRight = document.getElementById('statRight');
-    const emergencyStopBtn = document.getElementById('emergencyStopBtn');
+    const turnSpeedSelect = document.getElementById('turnSpeedSelect');
+    const inputTargetYaw = document.getElementById('inputTargetYaw');
+    const inputTargetSpeed = document.getElementById('inputTargetSpeed');
+    const sendHeadingBtn = document.getElementById('sendHeadingBtn');
+    const alignOnlyBtn = document.getElementById('alignOnlyBtn');
+    const stopMotionBtn = document.getElementById('stopMotionBtn');
+
+    // 擺頭吸塵
+    const toggleSweepBtn = document.getElementById('toggleSweepBtn');
+    const sweepAmpSlider = document.getElementById('sweepAmpSlider');
+    const sweepAmpVal = document.getElementById('sweepAmpVal');
+    const sweepPeriodSlider = document.getElementById('sweepPeriodSlider');
+    const sweepPeriodVal = document.getElementById('sweepPeriodVal');
+    const toggleRelayBtn = document.getElementById('toggleRelayBtn');
+
+    // 安全防撞
+    const currentThresholdBadge = document.getElementById('currentThresholdBadge');
+    const inputSafetyThreshMm = document.getElementById('inputSafetyThreshMm');
+    const setSafetyThreshBtn = document.getElementById('setSafetyThreshBtn');
+    const getSafetyThreshBtn = document.getElementById('getSafetyThreshBtn');
+
+    // 感測器數值
+    const frontCmVal = document.getElementById('frontCmVal');
+    const frontMmVal = document.getElementById('frontMmVal');
+    const frontProgressBar = document.getElementById('frontProgressBar');
+    const frontStatusTag = document.getElementById('frontStatusTag');
+    const rightCmVal = document.getElementById('rightCmVal');
+    const rightMmVal = document.getElementById('rightMmVal');
+    const rightProgressBar = document.getElementById('rightProgressBar');
+    const rightStatusTag = document.getElementById('rightStatusTag');
+    const imuYawVal = document.getElementById('imuYawVal');
+    const cardinalBadge = document.getElementById('cardinalBadge');
+    const imuPitchVal = document.getElementById('imuPitchVal');
+    const imuRollVal = document.getElementById('imuRollVal');
+
+    // 日誌終端
+    const terminalBox = document.getElementById('terminalBox');
+    const clearLogBtn = document.getElementById('clearLogBtn');
     const pingBtn = document.getElementById('pingBtn');
 
-    // 單馬達元素
-    const m0Slider = document.getElementById('m0Slider');
-    const m1Slider = document.getElementById('m1Slider');
-    const m0ValueBadge = document.getElementById('m0ValueBadge');
-    const m1ValueBadge = document.getElementById('m1ValueBadge');
-    const stopBothMotorsBtn = document.getElementById('stopBothMotorsBtn');
-    const relayOnBtn = document.getElementById('relayOnBtn');
-    const relayOffBtn = document.getElementById('relayOffBtn');
-
-    // HEX 與日誌元素
-    const hexInput = document.getElementById('hexInput');
-    const autoWrapCheck = document.getElementById('autoWrapCheck');
-    const sendHexBtn = document.getElementById('sendHexBtn');
-    const terminalConsole = document.getElementById('terminalConsole');
-    const clearLogBtn = document.getElementById('clearLogBtn');
-    const autoScrollCheck = document.getElementById('autoScrollCheck');
-
-    // ==============================================
-    // 分頁切換邏輯
-    // ==============================================
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        const targetId = btn.getAttribute('data-tab');
-        document.getElementById(targetId).classList.add('active');
-      });
+    // ============================================================
+    // 初始化與 WebSocket 連線
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initWebSocket();
+      initPolarCanvas();
+      setupEventListeners();
+      loadStreamUrl();
     });
 
-    // ==============================================
-    // WebSocket 通訊連線
-    // ==============================================
     function initWebSocket() {
       const loc = window.location;
       const wsProtocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -2103,6 +1058,9 @@
       ws.onopen = () => {
         addLog("SYS", "WebSocket 連線已建立", "");
         wsSend({ action: "refresh_ports" });
+        wsSend({ action: "get_safety_threshold" });
+        const curTurnSpd = parseInt(turnSpeedSelect.value) || 90;
+        wsSend({ action: "set_turn_speed", turn_speed: curTurnSpd });
       };
 
       ws.onmessage = (event) => {
@@ -2116,12 +1074,8 @@
 
       ws.onclose = () => {
         updateConnStatus(false, false);
-        addLog("SYS", "WebSocket 連線已斷開，5 秒後嘗試重新連線...", "");
+        addLog("SYS", "WebSocket 連線斷開，5 秒後嘗試重連...", "");
         setTimeout(initWebSocket, 5000);
-      };
-
-      ws.onerror = (err) => {
-        console.error("WS 異常:", err);
       };
     }
 
@@ -2131,9 +1085,6 @@
       }
     }
 
-    // ==============================================
-    // 伺服器訊息分派
-    // ==============================================
     function handleServerMessage(data) {
       const type = data.type;
 
@@ -2152,11 +1103,21 @@
       else if (type === "imu") {
         updateIMU(data);
       }
-      else if (type === "auto_correct") {
-        updateAutoCorrectState(data.enabled);
+      else if (type === "safety_threshold") {
+        updateSafetyThreshold(data.threshold_mm);
       }
       else if (type === "relay") {
         updateRelayState(data.state);
+      }
+      else if (type === "e_stop") {
+        if (cruiseHeartbeatTimer) {
+          clearInterval(cruiseHeartbeatTimer);
+          cruiseHeartbeatTimer = null;
+        }
+        hudTargetSpeed.innerText = "0 (防撞煞停)";
+        hardwareModeBadge.className = "hardware-mode-badge danger";
+        hardwareModeText.innerText = "E-STOP (障礙物防撞煞停)";
+        addLog("SYS", `⚠️ 觸發硬體防撞煞停: ${data.reason}`);
       }
       else if (type === "log") {
         addLog(data.direction, data.text, data.hex, data.time);
@@ -2165,7 +1126,6 @@
 
     function updateConnStatus(connected, mock, port = "") {
       connStatus.className = "status-badge";
-      let statusStr = "未連線";
       if (mock) {
         connStatus.classList.add("mock");
         connStatusText.innerText = "模擬測試中";
@@ -2173,36 +1133,19 @@
         connectBtn.className = "btn btn-primary";
         mockBtn.innerText = "🛑 停止模擬";
         mockBtn.className = "btn btn-danger";
-        statusStr = "模擬測試中";
       } else if (connected) {
         connStatus.classList.add("connected");
         connStatusText.innerText = `已連線: ${port}`;
         connectBtn.innerText = "❌ 斷開連線";
         connectBtn.className = "btn btn-danger";
-        mockBtn.innerText = "✨ 模擬模式";
+        mockBtn.innerText = "✨ 模擬";
         mockBtn.className = "btn btn-purple";
-        statusStr = `已連線: ${port}`;
       } else {
         connStatusText.innerText = "未連線";
         connectBtn.innerText = "🔌 連線";
         connectBtn.className = "btn btn-primary";
-        mockBtn.innerText = "✨ 模擬模式";
+        mockBtn.innerText = "✨ 模擬";
         mockBtn.className = "btn btn-purple";
-        statusStr = "未連線";
-      }
-
-      // 同步更新無人機手把模式 HUD 狀態
-      if (droneConnStatus && droneConnText) {
-        droneConnStatus.className = "status-badge";
-        if (mock) {
-          droneConnStatus.classList.add("mock");
-          droneConnText.innerText = "模擬測試";
-        } else if (connected) {
-          droneConnStatus.classList.add("connected");
-          droneConnText.innerText = `已連線 (${port})`;
-        } else {
-          droneConnText.innerText = "未連線";
-        }
       }
     }
 
@@ -2224,122 +1167,121 @@
       });
     }
 
-    // ==============================================
-    // 超音波數據儀表與雷達更新
-    // ==============================================
+    // ============================================================
+    // 超音波數據、雷達與防撞安全圈渲染
+    // ============================================================
     function updateUltrasonic(data) {
-      // 1. 前方超音波
       const f_mm = data.front_mm;
       const f_cm = data.front_cm;
-      renderSensorUi(f_mm, f_cm, frontCm, frontMm, frontProgress, frontStatus, "front");
-
-      // 2. 右方超音波
       const r_mm = data.right_mm;
       const r_cm = data.right_cm;
-      renderSensorUi(r_mm, r_cm, rightCm, rightMm, rightProgress, rightStatus, "right");
 
-      // 3. 更新 SVG 戰術雷達圖
-      renderRadarSvg(f_cm, r_cm);
-
-      // 4. 同步更新手機/平板無人機 HUD
-      if (droneFrontCmText) droneFrontCmText.innerText = (f_cm >= 0) ? f_cm.toFixed(1) : '--.-';
-      if (droneRightCmText) droneRightCmText.innerText = (r_cm >= 0) ? r_cm.toFixed(1) : '--.-';
-      if (droneFrontChip) droneFrontChip.classList.toggle('danger', f_cm >= 0 && f_cm < 15.0);
-      if (droneRightChip) droneRightChip.classList.toggle('danger', r_cm >= 0 && r_cm < 15.0);
-    }
-
-    function renderSensorUi(mm, cm, cmElem, mmElem, barElem, tagElem, sensorName) {
-      if (mm === null || mm < 0 || cm < 0) {
-        cmElem.innerText = "--.-";
-        mmElem.innerText = "超出範圍";
-        barElem.style.width = "0%";
-        tagElem.innerText = "未量測 / 超距";
-        tagElem.style.background = "#334155";
-        tagElem.style.color = "#94a3b8";
-        return;
-      }
-
-      cmElem.innerText = cm.toFixed(1);
-      mmElem.innerText = mm;
-
-      // 距離進度條 (上限 150cm)
-      const percent = Math.min(100, Math.max(5, (cm / 150) * 100));
-      barElem.style.width = `${percent}%`;
-
-      // 警示燈號分類 (危險 < 15cm, 注意 15~30cm, 安全 > 30cm)
-      if (cm < 15.0) {
-        barElem.style.backgroundColor = "var(--accent-red)";
-        tagElem.innerText = "🚨 障礙物過近！";
-        tagElem.style.background = "rgba(239, 68, 68, 0.25)";
-        tagElem.style.color = "#fca5a5";
-      } else if (cm < 30.0) {
-        barElem.style.backgroundColor = "var(--accent-yellow)";
-        tagElem.innerText = "⚠️ 注意距離";
-        tagElem.style.background = "rgba(234, 179, 8, 0.25)";
-        tagElem.style.color = "#fde047";
+      // 前方數值
+      if (f_cm !== undefined && f_cm >= 0) {
+        frontCmVal.innerText = f_cm.toFixed(1);
+        frontMmVal.innerText = f_mm;
+        const pct = Math.min(100, Math.max(0, (f_cm / 200.0) * 100));
+        frontProgressBar.style.width = pct + '%';
+        if (f_cm < (safetyThresholdMm / 10.0)) {
+          frontProgressBar.style.backgroundColor = 'var(--accent-red)';
+          frontStatusTag.innerText = '危險過近';
+          frontStatusTag.style.color = 'var(--accent-red)';
+        } else if (f_cm < 30.0) {
+          frontProgressBar.style.backgroundColor = 'var(--accent-yellow)';
+          frontStatusTag.innerText = '注意';
+          frontStatusTag.style.color = 'var(--accent-yellow)';
+        } else {
+          frontProgressBar.style.backgroundColor = 'var(--accent-green)';
+          frontStatusTag.innerText = '安全';
+          frontStatusTag.style.color = 'var(--accent-green)';
+        }
       } else {
-        barElem.style.backgroundColor = "var(--accent-green)";
-        tagElem.innerText = "✅ 安全距離";
-        tagElem.style.background = "rgba(34, 197, 94, 0.25)";
-        tagElem.style.color = "#86efac";
+        frontCmVal.innerText = '--.-';
+        frontMmVal.innerText = '---';
+        frontProgressBar.style.width = '0%';
+        frontStatusTag.innerText = '無信號/穿透';
+        frontStatusTag.style.color = 'var(--text-muted)';
       }
-    }
 
-    function getDistanceColor(cm, defaultColor) {
-      if (cm < 15) return "#ef4444";
-      if (cm < 30) return "#eab308";
-      return defaultColor;
+      // 右方數值
+      if (r_cm !== undefined && r_cm >= 0) {
+        rightCmVal.innerText = r_cm.toFixed(1);
+        rightMmVal.innerText = r_mm;
+        const pct = Math.min(100, Math.max(0, (r_cm / 200.0) * 100));
+        rightProgressBar.style.width = pct + '%';
+        if (r_cm < 15.0) {
+          rightProgressBar.style.backgroundColor = 'var(--accent-red)';
+          rightStatusTag.innerText = '過近';
+          rightStatusTag.style.color = 'var(--accent-red)';
+        } else {
+          rightProgressBar.style.backgroundColor = 'var(--accent-green)';
+          rightStatusTag.innerText = '正常';
+          rightStatusTag.style.color = 'var(--accent-green)';
+        }
+      } else {
+        rightCmVal.innerText = '--.-';
+        rightMmVal.innerText = '---';
+        rightProgressBar.style.width = '0%';
+        rightStatusTag.innerText = '無信號';
+        rightStatusTag.style.color = 'var(--text-muted)';
+      }
+
+      // 渲染 SVG 雷達光束
+      renderRadarSvg(f_cm, r_cm);
     }
 
     function renderRadarSvg(f_cm, r_cm) {
+      // 1. 前方光束
       if (f_cm > 0 && f_cm <= 150) {
-        const visualDist = Math.max(15, (f_cm / 150) * 55);
+        const visualDist = Math.max(15, (f_cm / 150) * 80);
         const tipY = 70 - visualDist;
-        frontBeam.setAttribute("points", `105,70 135,70 ${120 + visualDist * 0.4},${tipY} ${120 - visualDist * 0.4},${tipY}`);
+        frontBeam.setAttribute("points", `120,70 160,70 ${140 + visualDist * 0.35},${tipY} ${140 - visualDist * 0.35},${tipY}`);
         frontBeamLine.setAttribute("y2", tipY);
-        frontBeamText.setAttribute("y", Math.max(12, tipY - 5));
+        frontBeamText.setAttribute("y", Math.max(12, tipY - 4));
         frontBeamText.textContent = `${f_cm.toFixed(1)} cm`;
 
-        const color = getDistanceColor(f_cm, "#38bdf8");
+        const color = (f_cm < (safetyThresholdMm / 10.0)) ? "#ef4444" : (f_cm < 30) ? "#f59e0b" : "#38bdf8";
         frontBeam.setAttribute("stroke", color);
         frontBeam.setAttribute("fill", `${color}33`);
         frontBeamLine.setAttribute("stroke", color);
         frontBeamText.setAttribute("fill", color);
       } else {
-        frontBeam.setAttribute("points", "105,70 135,70 145,20 95,20");
+        frontBeam.setAttribute("points", "120,70 160,70 175,20 105,20");
         frontBeamLine.setAttribute("y2", "20");
-        frontBeamText.textContent = f_cm < 0 ? "超出範圍" : `${f_cm.toFixed(1)} cm`;
+        frontBeamText.textContent = f_cm < 0 ? "超出/開口" : `${f_cm.toFixed(1)} cm`;
       }
 
+      // 2. 右方光束
       if (r_cm > 0 && r_cm <= 150) {
         const visualDist = Math.max(15, (r_cm / 150) * 80);
-        const tipX = 160 + visualDist;
-        rightBeam.setAttribute("points", `160,115 160,145 ${tipX},${130 + visualDist * 0.3} ${tipX},${130 - visualDist * 0.3}`);
+        const tipX = 180 + visualDist;
+        rightBeam.setAttribute("points", `180,110 180,150 ${tipX},${130 + visualDist * 0.3} ${tipX},${130 - visualDist * 0.3}`);
         rightBeamLine.setAttribute("x2", tipX);
-        rightBeamText.setAttribute("x", Math.min(270, tipX + 6));
+        rightBeamText.setAttribute("x", Math.min(270, tipX + 5));
         rightBeamText.textContent = `${r_cm.toFixed(1)} cm`;
 
-        const color = getDistanceColor(r_cm, "#a855f7");
+        const color = (r_cm < 15) ? "#ef4444" : "#a855f7";
         rightBeam.setAttribute("stroke", color);
         rightBeam.setAttribute("fill", `${color}33`);
         rightBeamLine.setAttribute("stroke", color);
         rightBeamText.setAttribute("fill", color);
       } else {
-        rightBeam.setAttribute("points", "160,115 160,145 240,160 240,100");
-        rightBeamLine.setAttribute("x2", "240");
-        rightBeamText.textContent = r_cm < 0 ? "超出範圍" : `${r_cm.toFixed(1)} cm`;
+        rightBeam.setAttribute("points", "180,110 180,150 255,160 255,100");
+        rightBeamLine.setAttribute("x2", "255");
+        rightBeamText.textContent = r_cm < 0 ? "超出" : `${r_cm.toFixed(1)} cm`;
       }
 
+      // 3. 車體旋轉
       if (radarCarRotator) {
-        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 120 130)`);
+        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 140 130)`);
       }
     }
 
-    // ==============================================
-    // 🧭 IMU 姿態顯示、羅盤方位與直線自動校正邏輯
-    // ==============================================
+    // ============================================================
+    // IMU 姿態與底層運作狀態更新
+    // ============================================================
     function getCardinalDirection(angle) {
-      let deg = angle;
+      let deg = angle % 360;
       if (deg < 0) deg += 360;
       const directions = ["正北 (N)", "東北 (NE)", "正東 (E)", "東南 (SE)", "正南 (S)", "西南 (SW)", "正西 (W)", "西北 (NW)"];
       const index = Math.round(deg / 45) % 8;
@@ -2351,1193 +1293,517 @@
       currentPitch = typeof data.pitch === 'number' ? data.pitch : currentPitch;
       currentRoll = typeof data.roll === 'number' ? data.roll : currentRoll;
 
-      if (data.auto_correct !== undefined) {
-        updateAutoCorrectState(data.auto_correct);
-      }
+      imuYawVal.innerText = currentYaw.toFixed(1);
+      imuPitchVal.innerText = currentPitch.toFixed(1);
+      imuRollVal.innerText = currentRoll.toFixed(1);
+      cardinalBadge.innerText = getCardinalDirection(currentYaw);
 
-      const cardinal = getCardinalDirection(currentYaw);
-
-      // 1. 桌面儀表板更新
-      if (imuYawDisplay) imuYawDisplay.innerText = currentYaw.toFixed(1) + '°';
-      if (imuCardinalText) imuCardinalText.innerText = cardinal;
-      if (imuPitchDisplay) imuPitchDisplay.innerText = currentPitch.toFixed(1) + '°';
-      if (imuRollDisplay) imuRollDisplay.innerText = currentRoll.toFixed(1) + '°';
-
-      // 羅盤指針 (隨偏航角旋轉)
-      if (compassNeedle) {
-        compassNeedle.setAttribute("transform", `rotate(${-currentYaw.toFixed(1)} 80 80)`);
-      }
-
-      // 車輛雷達車體旋轉
       if (radarCarRotator) {
-        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 120 130)`);
+        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 140 130)`);
       }
 
-      // 2. 無人機手把模式 HUD 更新
-      if (droneHudYawText) droneHudYawText.innerText = currentYaw.toFixed(1) + '°';
-      if (droneHudCardinalText) droneHudCardinalText.innerText = `(${cardinal.split(' ')[0]})`;
-    }
+      // 更新硬體狀態指示徽章
+      const mode = data.mode !== undefined ? data.mode : 0;
+      const isHeading = Boolean(mode & 0x01);
+      const isSweep = Boolean(mode & 0x02);
 
-    function updateAutoCorrectState(enabled) {
-      isAutoCorrectEnabled = !!enabled;
-      if (autoCorrectToggleBtn) {
-        autoCorrectToggleBtn.classList.toggle('active', isAutoCorrectEnabled);
+      hardwareModeBadge.className = "hardware-mode-badge";
+      if (isHeading && isSweep) {
+        hardwareModeBadge.classList.add("sweep");
+        hardwareModeText.innerText = "HEADING + SWEEP (航向+擺頭)";
+        hardwareModeDot.style.background = "#c084fc";
+      } else if (isHeading) {
+        hardwareModeBadge.style.borderColor = "#38bdf8";
+        hardwareModeText.innerText = "HEADING (目標航向巡航)";
+        hardwareModeDot.style.background = "#38bdf8";
+      } else if (isSweep) {
+        hardwareModeBadge.classList.add("sweep");
+        hardwareModeText.innerText = "MANUAL + SWEEP (手動+擺頭)";
+        hardwareModeDot.style.background = "#c084fc";
+      } else {
+        hardwareModeText.innerText = "MANUAL (手動模式)";
+        hardwareModeDot.style.background = "#94a3b8";
       }
-      if (autoCorrectBtnText) {
-        autoCorrectBtnText.innerText = isAutoCorrectEnabled ? 'ON' : 'OFF';
-      }
-      if (droneAutoCorrectToggleBtn) {
-        droneAutoCorrectToggleBtn.classList.toggle('active', isAutoCorrectEnabled);
-      }
-      if (droneAutoCorrectStatus) {
-        droneAutoCorrectStatus.innerText = isAutoCorrectEnabled ? 'ON' : 'OFF';
-      }
-    }
 
-    function toggleAutoCorrect() {
-      const nextState = !isAutoCorrectEnabled;
-      updateAutoCorrectState(nextState);
-      wsSend({ action: "set_auto_correct", enable: nextState });
-      addLog("TX", `直線自動校正: ${nextState ? '開啟 ON' : '關閉 OFF'}`);
+      // 同步更新擺頭按鈕狀態
+      if (data.sweep_enabled !== undefined) {
+        updateSweepButtonUi(data.sweep_enabled);
+      }
     }
 
     function resetYawHeading() {
       wsSend({ action: "reset_imu" });
-      currentYaw = 0.0;
-      updateIMU({ yaw: 0.0, pitch: currentPitch, roll: currentRoll });
-      addLog("TX", "發送 IMU 朝向歸零指令 (0x05)");
+      addLog("SYS", "發送 IMU 朝向歸零指令 (Yaw = 0°)", "");
     }
 
-    // ==============================================
-    // 💡 繼電器狀態同步與切換
-    // ==============================================
-    function updateRelayState(state) {
-      currentRelayState = !!state;
-      if (droneRelayBtn) {
-        droneRelayBtn.classList.toggle('active', currentRelayState);
+    // ============================================================
+    // 極座標航向與速度搖桿 (Polar Heading Joystick)
+    // ============================================================
+    const joyRadius = 110;     // 最大拖曳半徑 (px)
+    const joyDeadzone = 12;    // 判定死區 (px)
+    const joyCenter = 135;     // Canvas 中心 (270 / 2)
+
+    function initPolarCanvas() {
+      drawPolarJoystick(joyCenter, joyCenter, false);
+
+      polarCanvasWrapper.addEventListener('pointerdown', onJoyPointerDown);
+      window.addEventListener('pointermove', onJoyPointerMove);
+      window.addEventListener('pointerup', onJoyPointerUp);
+      window.addEventListener('pointercancel', onJoyPointerUp);
+    }
+
+    function drawPolarJoystick(knobX, knobY, isInteracting) {
+      const ctx = polarCanvas.getContext('2d');
+      ctx.clearRect(0, 0, 270, 270);
+
+      // 1. 背景同心圓刻度 (25%, 50%, 75%, 100% 速度)
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#1e293b';
+      [0.25, 0.5, 0.75, 1.0].forEach(ratio => {
+        ctx.beginPath();
+        ctx.arc(joyCenter, joyCenter, joyRadius * ratio, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // 2. 十字坐標線
+      ctx.strokeStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(joyCenter - joyRadius, joyCenter);
+      ctx.lineTo(joyCenter + joyRadius, joyCenter);
+      ctx.moveTo(joyCenter, joyCenter - joyRadius);
+      ctx.lineTo(joyCenter, joyCenter + joyRadius);
+      ctx.stroke();
+
+      // 3. 方位標記文字
+      ctx.font = "10px 'JetBrains Mono', monospace";
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("0° (北/前)", joyCenter, joyCenter - joyRadius - 10);
+      ctx.fillText("+90° (東)", joyCenter + joyRadius + 15, joyCenter);
+      ctx.fillText("±180° (南)", joyCenter, joyCenter + joyRadius + 12);
+      ctx.fillText("-90° (西)", joyCenter - joyRadius - 15, joyCenter);
+
+      // 4. 中央紅色 STOP 煞停區域
+      ctx.beginPath();
+      ctx.arc(joyCenter, joyCenter, 18, 0, Math.PI * 2);
+      ctx.fillStyle = isInteracting ? "#1e293b" : "rgba(239, 68, 68, 0.25)";
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#ef4444";
+      ctx.stroke();
+
+      ctx.fillStyle = "#f87171";
+      ctx.font = "8px 'Noto Sans TC', sans-serif";
+      ctx.fillText("STOP", joyCenter, joyCenter - 1);
+
+      // 5. 若拖曳中，繪製向量牽引線
+      if (isInteracting && (knobX !== joyCenter || knobY !== joyCenter)) {
+        ctx.beginPath();
+        ctx.moveTo(joyCenter, joyCenter);
+        ctx.lineTo(knobX, knobY);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.stroke();
       }
-      if (droneRelayStatusLabel) {
-        droneRelayStatusLabel.innerText = currentRelayState ? 'ON' : 'OFF';
+
+      // 6. 搖桿操縱球 (Knob)
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 20, 0, Math.PI * 2);
+      const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 20);
+      if (isInteracting) {
+        knobGrad.addColorStop(0, '#38bdf8');
+        knobGrad.addColorStop(1, '#0284c7');
+      } else {
+        knobGrad.addColorStop(0, '#475569');
+        knobGrad.addColorStop(1, '#1e293b');
       }
-      if (relayOnBtn && relayOffBtn) {
-        if (currentRelayState) {
-          relayOnBtn.style.boxShadow = "0 0 10px rgba(34, 197, 94, 0.6)";
-          relayOffBtn.style.boxShadow = "none";
-        } else {
-          relayOnBtn.style.boxShadow = "none";
-          relayOffBtn.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.4)";
-        }
+      ctx.fillStyle = knobGrad;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isInteracting ? '#7dd3fc' : '#64748b';
+      ctx.stroke();
+
+      // 操縱球中心小圓點
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = isInteracting ? '#ffffff' : '#94a3b8';
+      ctx.fill();
+    }
+
+    function onJoyPointerDown(e) {
+      polarCanvasWrapper.setPointerCapture(e.pointerId);
+      joyPointerId = e.pointerId;
+      joystickActive = true;
+      joyClickStartTime = Date.now();
+
+      const rect = polarCanvas.getBoundingClientRect();
+      joyStartX = e.clientX - rect.left;
+      joyStartY = e.clientY - rect.top;
+
+      // 若點擊直接落在中央 STOP 圓圈 (半徑 18px 內)，立即觸發煞停
+      const distFromCenter = Math.hypot(joyStartX - joyCenter, joyStartY - joyCenter);
+      if (distFromCenter < 20) {
+        triggerStopMotion();
+        drawPolarJoystick(joyCenter, joyCenter, false);
+        return;
+      }
+
+      updateJoyPosition(joyStartX, joyStartY);
+    }
+
+    function onJoyPointerMove(e) {
+      if (!joystickActive || e.pointerId !== joyPointerId) return;
+      const rect = polarCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      updateJoyPosition(x, y);
+    }
+
+    function onJoyPointerUp(e) {
+      if (!joystickActive || e.pointerId !== joyPointerId) return;
+      joystickActive = false;
+
+      const rect = polarCanvas.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+      const distFromCenter = Math.hypot(endX - joyCenter, endY - joyCenter);
+
+      // 【核心邏輯 1】：若點擊一下搖桿 (位移小於死區)，觸發停止！
+      if (distFromCenter < joyDeadzone) {
+        triggerStopMotion();
+      }
+      // 【核心邏輯 2】：若拖曳至指定角度與速度，發送目標航向並自動回正
+      else {
+        sendHeadingCommand(joyTargetYaw, joyTargetSpeed);
+      }
+
+      // 搖桿彈簧回正至中心
+      drawPolarJoystick(joyCenter, joyCenter, false);
+      joyPointerId = null;
+    }
+
+    function updateJoyPosition(x, y) {
+      const dx = x - joyCenter;
+      const dy = y - joyCenter;
+      const dist = Math.hypot(dx, dy);
+
+      // 限制在最大半徑內
+      let knobX = x;
+      let knobY = y;
+      if (dist > joyRadius) {
+        const angle = Math.atan2(dy, dx);
+        knobX = joyCenter + Math.cos(angle) * joyRadius;
+        knobY = joyCenter + Math.sin(angle) * joyRadius;
+      }
+
+      // 【核心數學】：
+      // 正上方為 0 度，正右為 +90 度，正南為 180 度，正左為 -90 度
+      // atan2(dx, -dy) 取度數剛好符合
+      const rad = Math.atan2(dx, -dy);
+      let deg = (rad * 180.0) / Math.PI;
+      deg = Math.round(deg * 10) / 10.0; // 保留小數點後 1 位
+
+      // 換算速度 (半徑比率 * maxPower)
+      const ratio = Math.min(1.0, dist / joyRadius);
+      const maxPwr = parseInt(maxPowerSelect.value) || 200;
+      let speed = Math.round(ratio * maxPwr);
+
+      if (dist < joyDeadzone) {
+        speed = 0;
+      }
+
+      joyTargetYaw = deg;
+      joyTargetSpeed = speed;
+
+      // 即時更新 HUD 數值
+      hudTargetYaw.innerText = (deg >= 0 ? `+${deg.toFixed(1)}°` : `${deg.toFixed(1)}°`);
+      hudTargetSpeed.innerText = speed;
+
+      drawPolarJoystick(knobX, knobY, true);
+    }
+
+    function triggerStopMotion() {
+      if (cruiseHeartbeatTimer) {
+        clearInterval(cruiseHeartbeatTimer);
+        cruiseHeartbeatTimer = null;
+      }
+      wsSend({ action: "stop_motion" });
+      hudTargetSpeed.innerText = "0 (已煞停)";
+      addLog("TX", "🛑 緊急煞停 (Stop Motion): 解除航向與擺頭鎖定", "AA 08 55");
+    }
+
+    function sendHeadingCommand(targetYaw, speed) {
+      if (cruiseHeartbeatTimer) {
+        clearInterval(cruiseHeartbeatTimer);
+        cruiseHeartbeatTimer = null;
+      }
+
+      wsSend({
+        action: "set_heading",
+        target_yaw: targetYaw,
+        speed: speed
+      });
+      addLog("TX", `🎯 設定目標航向: 角度=${targetYaw.toFixed(1)}°, 速度=${speed}`);
+
+      // 若 speed != 0，啟動前端巡航心跳定時器 (每 250ms 發送靜音保持封包，維持 Arduino 不超時)
+      if (speed !== 0) {
+        hudTargetSpeed.innerText = `${speed} (巡航中)`;
+        cruiseHeartbeatTimer = setInterval(() => {
+          wsSend({
+            action: "set_heading",
+            target_yaw: targetYaw,
+            speed: speed,
+            heartbeat: true
+          });
+        }, 250);
+      } else {
+        hudTargetSpeed.innerText = "0 (純轉向對齊)";
       }
     }
 
-    function setRelay(state) {
-      updateRelayState(state);
-      wsSend({ action: "relay", relay_id: 1, state: state });
-      try { navigator.vibrate?.(40); } catch (e) { }
-      addLog("TX", `控制繼電器: ${state ? 'ON' : 'OFF'}`);
+    function quickSetHeading(angle) {
+      const spd = parseInt(inputTargetSpeed.value) || 150;
+      inputTargetYaw.value = angle;
+      sendHeadingCommand(angle, spd);
+      hudTargetYaw.innerText = `${angle.toFixed(1)}°`;
+      hudTargetSpeed.innerText = spd;
+    }
+
+    // ============================================================
+    // 擺頭吸塵控制 (Sweep & Vacuum)
+    // ============================================================
+    function updateSweepLabels() {
+      sweepAmpVal.innerText = `±${sweepAmpSlider.value}°`;
+      sweepPeriodVal.innerText = `${sweepPeriodSlider.value}ms`;
+    }
+
+    function toggleSweepMode() {
+      isSweepEnabled = !isSweepEnabled;
+      const amp = parseFloat(sweepAmpSlider.value) || 20.0;
+      const period = parseInt(sweepPeriodSlider.value) || 2000;
+
+      wsSend({
+        action: "set_sweep",
+        enable: isSweepEnabled,
+        amplitude: amp,
+        period_ms: period
+      });
+
+      updateSweepButtonUi(isSweepEnabled);
+      addLog("TX", `動態擺頭模式: ${isSweepEnabled ? '開啟 ON' : '關閉 OFF'} (振幅=±${amp}°, 週期=${period}ms)`);
+    }
+
+    function updateSweepButtonUi(enabled) {
+      isSweepEnabled = !!enabled;
+      toggleSweepBtn.classList.toggle('active', isSweepEnabled);
+      toggleSweepBtn.innerHTML = `<span>🧹 擺頭: ${isSweepEnabled ? 'ON (運行中)' : 'OFF'}</span>`;
     }
 
     function toggleRelay() {
-      setRelay(!currentRelayState);
-    }
-
-    // ==============================================
-    // 操控核心狀態與共用雙馬達驅動 API
-    // ==============================================
-    const SEND_INTERVAL_MS = 50;
-    const HEARTBEAT_INTERVAL_MS = 100;
-    let lastSendTime = 0;
-    let desktopTurn = 0;
-    let desktopSpeed = 0;
-
-    function updateDesktopDriveStats(turn, speed) {
-      const left = Math.max(-255, Math.min(255, speed - turn));
-      const right = Math.max(-255, Math.min(255, speed + turn));
-      statTurn.innerText = turn;
-      statSpeed.innerText = speed;
-      statLeft.innerText = left;
-      statRight.innerText = right;
-    }
-
-    function sendDesktopDrive(turn, speed, force = false, isHeartbeat = false) {
-      desktopTurn = turn;
-      desktopSpeed = speed;
-      updateDesktopDriveStats(turn, speed);
-
-      const now = performance.now();
-      if (force || isHeartbeat || now - lastSendTime >= SEND_INTERVAL_MS) {
-        lastSendTime = now;
-        const payload = { action: "dual_motor", turn: turn, speed: speed };
-        if (isHeartbeat) payload.heartbeat = true;
-        wsSend(payload);
-      }
-    }
-
-    // ==============================================
-    // 操控模式切換 (虛擬搖桿 vs 方向按鈕盤)
-    // ==============================================
-    let currentControlMode = 'joystick';
-    let dpadInterval = null;
-    let activeDpadDir = null;
-
-    function switchControlMode(mode) {
-      currentControlMode = mode;
-      resetJoystick();
-      stopDpad();
-
-      const joystickWrapper = document.getElementById('joystickWrapper');
-      const dpadWrapper = document.getElementById('dpadWrapper');
-      const modeJoystickBtn = document.getElementById('modeJoystickBtn');
-      const modeButtonsBtn = document.getElementById('modeButtonsBtn');
-      const titleElem = document.getElementById('controlModeTitle');
-
-      if (mode === 'joystick') {
-        joystickWrapper.style.display = 'block';
-        dpadWrapper.style.display = 'none';
-        modeJoystickBtn.classList.add('active');
-        modeButtonsBtn.classList.remove('active');
-        if (titleElem) titleElem.innerText = '🕹️ 雙馬達虛擬搖桿';
-      } else {
-        joystickWrapper.style.display = 'none';
-        dpadWrapper.style.display = 'grid';
-        modeJoystickBtn.classList.remove('active');
-        modeButtonsBtn.classList.add('active');
-        if (titleElem) titleElem.innerText = '🎛️ 雙馬達方向按鈕';
-      }
-    }
-
-    function toggleControlMode() {
-      if (currentControlMode === 'joystick') {
-        switchControlMode('buttons');
-      } else {
-        switchControlMode('joystick');
-      }
-    }
-
-    // ==============================================
-    // 前後左右方向按鈕 (D-Pad) 邏輯
-    // ==============================================
-    function startDpad(dir) {
-      stopDpad();
-      activeDpadDir = dir;
-      sendDpadStep(dir);
-
-      dpadInterval = setInterval(() => {
-        sendDpadStep(dir);
-      }, SEND_INTERVAL_MS);
-    }
-
-    function stopDpad() {
-      if (dpadInterval) {
-        clearInterval(dpadInterval);
-        dpadInterval = null;
-      }
-      if (activeDpadDir !== null) {
-        activeDpadDir = null;
-        sendDesktopDrive(0, 0, true);
-      }
-      ['dpadUp', 'dpadDown', 'dpadLeft', 'dpadRight', 'dpadStop'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove('active');
-      });
-    }
-
-    function sendDpadStep(dir) {
-      const maxPower = parseInt(maxPowerSelect.value) || 200;
-      let turn = 0;
-      let speed = 0;
-
-      const dirMap = {
-        up: { speed: maxPower, id: 'dpadUp' },
-        down: { speed: -maxPower, id: 'dpadDown' },
-        left: { turn: maxPower, id: 'dpadLeft' },
-        right: { turn: -maxPower, id: 'dpadRight' }
-      };
-
-      const match = dirMap[dir];
-      if (match) {
-        if (match.speed !== undefined) speed = match.speed;
-        if (match.turn !== undefined) turn = match.turn;
-        const el = document.getElementById(match.id);
-        if (el) el.classList.add('active');
-      }
-
-      sendDesktopDrive(turn, speed, true);
-    }
-
-    function setupDpadEvents() {
-      const btnList = [
-        { id: 'dpadUp', dir: 'up' },
-        { id: 'dpadDown', dir: 'down' },
-        { id: 'dpadLeft', dir: 'left' },
-        { id: 'dpadRight', dir: 'right' }
-      ];
-
-      btnList.forEach(({ id, dir }) => {
-        const btn = document.getElementById(id);
-        if (!btn) return;
-
-        btn.addEventListener('pointerdown', (e) => {
-          e.preventDefault();
-          try { btn.setPointerCapture(e.pointerId); } catch (ex) { }
-          startDpad(dir);
-        });
-
-        const handleRelease = (e) => {
-          if (activeDpadDir === dir) {
-            stopDpad();
-          }
-          try { btn.releasePointerCapture(e.pointerId); } catch (ex) { }
-        };
-
-        btn.addEventListener('pointerup', handleRelease);
-        btn.addEventListener('pointercancel', handleRelease);
-      });
-
-      const stopBtn = document.getElementById('dpadStop');
-      if (stopBtn) {
-        stopBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          stopDpad();
-          wsSend({ action: "stop" });
-        });
-      }
-    }
-
-    // ==============================================
-    // 虛擬搖桿引擎 (HTML5 Canvas + Touch/Mouse)
-    // ==============================================
-    const ctx = joystickCanvas.getContext('2d');
-    const width = joystickCanvas.width;
-    const height = joystickCanvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const maxRadius = 75; // 搖桿最大推行半徑
-    const knobRadius = 26; // 搖桿握柄半徑
-
-    let stickX = centerX;
-    let stickY = centerY;
-    let isDragging = false;
-
-    function drawJoystick() {
-      ctx.clearRect(0, 0, width, height);
-
-      // 1. 底盤同心圓
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#1e293b';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#334155';
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, maxRadius * 0.5, 0, Math.PI * 2);
-      ctx.strokeStyle = '#273549';
-      ctx.stroke();
-
-      // 2. 十字十字準線
-      ctx.beginPath();
-      ctx.moveTo(centerX - maxRadius, centerY);
-      ctx.lineTo(centerX + maxRadius, centerY);
-      ctx.moveTo(centerX, centerY - maxRadius);
-      ctx.lineTo(centerX, centerY + maxRadius);
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // 3. 連線桿
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(stickX, stickY);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-
-      // 4. 搖桿頭 (Knob)
-      const grad = ctx.createRadialGradient(stickX - 6, stickY - 6, 2, stickX, stickY, knobRadius);
-      grad.addColorStop(0, '#7dd3fc');
-      grad.addColorStop(0.7, '#0284c7');
-      grad.addColorStop(1, '#0369a1');
-
-      ctx.beginPath();
-      ctx.arc(stickX, stickY, knobRadius, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#bae6fd';
-      ctx.stroke();
-    }
-
-    drawJoystick();
-
-    function updateJoystickPosition(clientX, clientY) {
-      const rect = joystickCanvas.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-
-      let dx = x - centerX;
-      let dy = y - centerY;
-      const distance = Math.hypot(dx, dy);
-
-      if (distance > maxRadius) {
-        const angle = Math.atan2(dy, dx);
-        stickX = centerX + Math.cos(angle) * maxRadius;
-        stickY = centerY + Math.sin(angle) * maxRadius;
-      } else {
-        stickX = x;
-        stickY = y;
-      }
-
-      drawJoystick();
-      calculateAndEmitSpeed(stickX - centerX, stickY - centerY);
-    }
-
-    function resetJoystick() {
-      stickX = centerX;
-      stickY = centerY;
-      drawJoystick();
-      sendDesktopDrive(0, 0, true);
-    }
-
-    // 搖桿座標計算為雙馬達 Speed & Turn
-    function calculateAndEmitSpeed(dx, dy, force = false) {
-      const maxPower = parseInt(maxPowerSelect.value) || 200;
-
-      // 規範化 (-1.0 ~ +1.0)，往上拖曳為正 (前進)
-      const normX = dx / maxRadius;
-      const normY = -dy / maxRadius;
-
-      // 死區過濾 (Deadband)
-      const deadband = 0.08;
-      const filterX = Math.abs(normX) < deadband ? 0 : normX;
-      const filterY = Math.abs(normY) < deadband ? 0 : normY;
-
-      // Turn: 逆時針 (左轉) 為正，順時針 (右轉) 為負
-      const turn = Math.round(-filterX * maxPower);
-      const speed = Math.round(filterY * maxPower);
-
-      sendDesktopDrive(turn, speed, force);
-    }
-
-    // 觸控與滑鼠事件監聽
-    joystickCanvas.addEventListener('pointerdown', (e) => {
-      isDragging = true;
-      joystickCanvas.setPointerCapture(e.pointerId);
-      updateJoystickPosition(e.clientX, e.clientY);
-    });
-
-    joystickCanvas.addEventListener('pointermove', (e) => {
-      if (isDragging) {
-        updateJoystickPosition(e.clientX, e.clientY);
-      }
-    });
-
-    const pointerUpHandler = (e) => {
-      if (isDragging) {
-        isDragging = false;
-        try { joystickCanvas.releasePointerCapture(e.pointerId); } catch (ex) { }
-        resetJoystick();
-      }
-    };
-    joystickCanvas.addEventListener('pointerup', pointerUpHandler);
-    joystickCanvas.addEventListener('pointercancel', pointerUpHandler);
-
-    // ==============================================
-    // 鍵盤 WASD / 空白鍵控制支援
-    // ==============================================
-    const keyState = { w: false, a: false, s: false, d: false, space: false };
-
-    window.addEventListener('keydown', (e) => {
-      // 避免在輸入框打字時觸發
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      const k = e.key.toLowerCase();
-      if (k === 'w' || k === 'arrowup') keyState.w = true;
-      else if (k === 's' || k === 'arrowdown') keyState.s = true;
-      else if (k === 'a' || k === 'arrowleft') keyState.a = true;
-      else if (k === 'd' || k === 'arrowright') keyState.d = true;
-      else if (e.code === 'Space') {
-        keyState.space = true;
-        e.preventDefault();
-      } else return;
-
-      updateKeyUi();
-      applyKeyboardDrive();
-    });
-
-    window.addEventListener('keyup', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      const k = e.key.toLowerCase();
-      if (k === 'w' || k === 'arrowup') keyState.w = false;
-      else if (k === 's' || k === 'arrowdown') keyState.s = false;
-      else if (k === 'a' || k === 'arrowleft') keyState.a = false;
-      else if (k === 'd' || k === 'arrowright') keyState.d = false;
-      else if (e.code === 'Space') keyState.space = false;
-      else return;
-
-      updateKeyUi();
-      applyKeyboardDrive();
-    });
-
-    function updateKeyUi() {
-      document.getElementById('keyW').classList.toggle('active', keyState.w);
-      document.getElementById('keyS').classList.toggle('active', keyState.s);
-      document.getElementById('keyA').classList.toggle('active', keyState.a);
-      document.getElementById('keyD').classList.toggle('active', keyState.d);
-      document.getElementById('keySpace').classList.toggle('active', keyState.space);
-
-      // 同步高亮方向按鈕盤
-      const dUp = document.getElementById('dpadUp');
-      const dDown = document.getElementById('dpadDown');
-      const dLeft = document.getElementById('dpadLeft');
-      const dRight = document.getElementById('dpadRight');
-      const dStop = document.getElementById('dpadStop');
-
-      if (dUp) dUp.classList.toggle('active', keyState.w);
-      if (dDown) dDown.classList.toggle('active', keyState.s);
-      if (dLeft) dLeft.classList.toggle('active', keyState.a);
-      if (dRight) dRight.classList.toggle('active', keyState.d);
-      if (dStop) dStop.classList.toggle('active', keyState.space);
-    }
-
-    function applyKeyboardDrive() {
-      if (keyState.space) {
-        sendDesktopDrive(0, 0, true);
-        resetJoystick();
-        stopDpad();
-        return;
-      }
-
-      const maxPower = parseInt(maxPowerSelect.value) || 200;
-      let spd = 0;
-      let trn = 0;
-
-      if (keyState.w && !keyState.s) spd = maxPower;
-      if (keyState.s && !keyState.w) spd = -maxPower;
-      if (keyState.a && !keyState.d) trn = maxPower;  // 左轉
-      if (keyState.d && !keyState.a) trn = -maxPower; // 右轉
-
-      stickX = centerX - (trn / maxPower) * (maxRadius * 0.8);
-      stickY = centerY - (spd / maxPower) * (maxRadius * 0.8);
-      drawJoystick();
-
-      sendDesktopDrive(trn, spd, true);
-    }
-
-    pingBtn.addEventListener('click', () => {
-      wsSend({ action: "ping" });
-      addLog("TX", "發送 Ping (CMD 0x00)", "AA 00 55");
-    });
-
-    // ==============================================
-    // 進階模式：單馬達獨立控制
-    // ==============================================
-    m0Slider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      m0ValueBadge.innerText = val;
-      wsSend({ action: "single_motor", motor_id: 0, speed: val });
-    });
-
-    m1Slider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      m1ValueBadge.innerText = val;
-      wsSend({ action: "single_motor", motor_id: 1, speed: val });
-    });
-
-    function setMotor(motorId, speed) {
-      if (motorId === 0) {
-        m0Slider.value = speed;
-        m0ValueBadge.innerText = speed;
-      } else {
-        m1Slider.value = speed;
-        m1ValueBadge.innerText = speed;
-      }
-      wsSend({ action: "single_motor", motor_id: motorId, speed: speed });
-    }
-
-    function adjustMotor(motorId, delta) {
-      const slider = motorId === 0 ? m0Slider : m1Slider;
-      let val = parseInt(slider.value) + delta;
-      val = Math.max(-255, Math.min(255, val));
-      setMotor(motorId, val);
-    }
-
-    stopBothMotorsBtn.addEventListener('click', () => {
-      setMotor(0, 0);
-      setMotor(1, 0);
-      wsSend({ action: "stop" });
-    });
-
-    relayOnBtn.addEventListener('click', () => {
-      setRelay(true);
-    });
-
-    relayOffBtn.addEventListener('click', () => {
-      setRelay(false);
-    });
-
-    // ==============================================
-    // 進階模式：自訂 HEX 指令發送
-    // ==============================================
-    function applyHexPreset(hexStr) {
-      hexInput.value = hexStr;
-      hexInput.focus();
-    }
-
-    sendHexBtn.addEventListener('click', () => {
-      const hex = hexInput.value.trim();
-      if (!hex) {
-        alert("請輸入 HEX 指令！");
-        return;
-      }
+      isRelayOn = !isRelayOn;
       wsSend({
-        action: "send_hex",
-        hex: hex,
-        auto_wrap: autoWrapCheck.checked
+        action: "relay",
+        relay_id: 1,
+        state: isRelayOn
       });
-    });
+      updateRelayState(isRelayOn);
+    }
 
-    hexInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        sendHexBtn.click();
+    function updateRelayState(state) {
+      isRelayOn = !!state;
+      toggleRelayBtn.classList.toggle('relay-active', isRelayOn);
+      toggleRelayBtn.innerHTML = `<span>🌪️ 吸塵馬達 (Relay 1): ${isRelayOn ? 'ON (運轉中)' : 'OFF'}</span>`;
+    }
+
+    function startComboClean() {
+      // 1. 開啟吸塵馬達
+      if (!isRelayOn) toggleRelay();
+      // 2. 開啟擺頭模式
+      if (!isSweepEnabled) toggleSweepMode();
+      addLog("SYS", "✨ 已啟動一鍵清掃組合 (擺頭模式 + 吸塵馬達)");
+    }
+
+    // ============================================================
+    // 防撞安全門檻 (Safety Threshold)
+    // ============================================================
+    function updateSafetyThreshold(threshMm) {
+      safetyThresholdMm = threshMm;
+      currentThresholdBadge.innerText = `${(threshMm / 10.0).toFixed(1)} cm (${threshMm} mm)`;
+      inputSafetyThreshMm.value = threshMm;
+
+      // 更新雷達上的警戒圓圈半徑 (比例換算: 150cm = 85px)
+      if (radarSafetyCircle) {
+        if (threshMm <= 0) {
+          radarSafetyCircle.style.display = "none";
+        } else {
+          radarSafetyCircle.style.display = "block";
+          const cm = threshMm / 10.0;
+          const r = Math.min(120, Math.max(15, (cm / 150.0) * 85));
+          radarSafetyCircle.setAttribute("r", r);
+        }
       }
-    });
+    }
 
-    // ==============================================
-    // 終端日誌紀錄 (Terminal Log)
-    // ==============================================
-    function addLog(direction, text, hex, timestamp) {
-      const timeStr = timestamp || new Date().toTimeString().split(' ')[0];
+    function quickSetSafetyThresh(mm) {
+      inputSafetyThreshMm.value = mm;
+      wsSend({
+        action: "set_safety_threshold",
+        threshold_mm: mm
+      });
+      updateSafetyThreshold(mm);
+      addLog("TX", `設定超音波防撞門檻: ${mm} mm (${(mm/10.0).toFixed(1)} cm)`);
+    }
+
+    // ============================================================
+    // 串流設定與事件監聽
+    // ============================================================
+    function loadStreamUrl() {
+      const saved = localStorage.getItem('robot_stream_url');
+      if (saved) {
+        streamUrlInput.value = saved;
+        cameraIframe.src = saved;
+      }
+    }
+
+    function setupEventListeners() {
+      // 串流設定開關
+      streamSettingsBtn.addEventListener('click', () => {
+        streamSettingsPanel.style.display = (streamSettingsPanel.style.display === 'flex' ? 'none' : 'flex');
+      });
+
+      saveStreamUrlBtn.addEventListener('click', () => {
+        const url = streamUrlInput.value.trim();
+        if (url) {
+          cameraIframe.src = url;
+          localStorage.setItem('robot_stream_url', url);
+          streamSettingsPanel.style.display = 'none';
+          addLog("SYS", `串流網址已更新: ${url}`);
+        }
+      });
+
+      useHostStreamBtn.addEventListener('click', () => {
+        const host = window.location.hostname;
+        const newUrl = `http://${host}:8889/live/stream/?network-caching=0`;
+        streamUrlInput.value = newUrl;
+        cameraIframe.src = newUrl;
+        localStorage.setItem('robot_stream_url', newUrl);
+        addLog("SYS", `已自動套用當前主機 IP 串流: ${newUrl}`);
+      });
+
+      reloadStreamBtn.addEventListener('click', () => {
+        const cur = cameraIframe.src;
+        cameraIframe.src = '';
+        setTimeout(() => cameraIframe.src = cur, 150);
+      });
+
+      // 手動導航按鈕
+      sendHeadingBtn.addEventListener('click', () => {
+        const yaw = parseFloat(inputTargetYaw.value) || 0.0;
+        const spd = parseInt(inputTargetSpeed.value) || 0;
+        sendHeadingCommand(yaw, spd);
+      });
+
+      alignOnlyBtn.addEventListener('click', () => {
+        const yaw = parseFloat(inputTargetYaw.value) || 0.0;
+        sendHeadingCommand(yaw, 0);
+      });
+
+      stopMotionBtn.addEventListener('click', triggerStopMotion);
+
+      // 旋轉速度上限切換
+      turnSpeedSelect.addEventListener('change', () => {
+        const val = parseInt(turnSpeedSelect.value) || 90;
+        wsSend({ action: "set_turn_speed", turn_speed: val });
+        addLog("TX", `設定旋轉轉速上限: ${val} PWM`);
+      });
+
+      // 防撞門檻按鈕
+      setSafetyThreshBtn.addEventListener('click', () => {
+        const mm = parseInt(inputSafetyThreshMm.value) || 0;
+        quickSetSafetyThresh(mm);
+      });
+
+      getSafetyThreshBtn.addEventListener('click', () => {
+        wsSend({ action: "get_safety_threshold" });
+        addLog("TX", "查詢當前防撞門檻...", "AA 0A 55");
+      });
+
+      // 連線與模擬
+      connectBtn.addEventListener('click', () => {
+        if (isConnected) {
+          wsSend({ action: "disconnect" });
+        } else {
+          const port = portSelect.value;
+          const baud = parseInt(baudSelect.value) || 9600;
+          if (!port) {
+            alert("請先選擇序列埠！");
+            return;
+          }
+          wsSend({ action: "connect", port: port, baudrate: baud });
+        }
+      });
+
+      mockBtn.addEventListener('click', () => {
+        if (isMockMode) {
+          wsSend({ action: "disconnect" });
+        } else {
+          wsSend({ action: "connect", port: "MOCK", baudrate: 9600 });
+        }
+      });
+
+      refreshPortsBtn.addEventListener('click', () => {
+        wsSend({ action: "refresh_ports" });
+        addLog("SYS", "正在重新整理可用序列埠列表...");
+      });
+
+      pingBtn.addEventListener('click', () => {
+        wsSend({ action: "ping" });
+        addLog("TX", "發送 Ping 測試封包", "AA 00 55");
+      });
+
+      clearLogBtn.addEventListener('click', () => {
+        terminalBox.innerHTML = "";
+      });
+
+      // 鍵盤空白鍵緊急煞停
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+          e.preventDefault();
+          triggerStopMotion();
+        }
+      });
+    }
+
+    // ============================================================
+    // 日誌終端輸出
+    // ============================================================
+    function addLog(dir, text, hex = "", timeStr = "") {
+      const now = timeStr || new Date().toTimeString().split(' ')[0];
       const line = document.createElement('div');
       line.className = 'log-line';
 
+      const dirClass = dir === 'TX' ? 'log-dir-tx' : dir === 'RX' ? 'log-dir-rx' : 'log-dir-sys';
       line.innerHTML = `
-        <span class="log-time">[${timeStr}]</span>
-        <span class="log-tag ${direction}">${direction}</span>
-        ${hex ? `<span class="log-hex">&lt;${hex}&gt;</span>` : ''}
-        <span class="log-desc">${escapeHtml(text)}</span>
+        <span class="log-time">[${now}]</span>
+        <span class="${dirClass}">[${dir}]</span>
+        <span>${escapeHtml(text)}</span>
+        ${hex ? `<span class="log-hex">${escapeHtml(hex)}</span>` : ''}
       `;
 
-      terminalConsole.appendChild(line);
+      terminalBox.appendChild(line);
+      terminalBox.scrollTop = terminalBox.scrollHeight;
 
-      // 限制日誌條數防佔用記憶體
-      if (terminalConsole.children.length > 250) {
-        terminalConsole.removeChild(terminalConsole.firstChild);
-      }
-
-      if (autoScrollCheck.checked) {
-        terminalConsole.scrollTop = terminalConsole.scrollHeight;
+      // 限制日誌最大行數 (300 行)
+      while (terminalBox.children.length > 300) {
+        terminalBox.removeChild(terminalBox.firstChild);
       }
     }
-
-    clearLogBtn.addEventListener('click', () => {
-      terminalConsole.innerHTML = '';
-      addLog("SYS", "日誌已清空", "");
-    });
 
     function escapeHtml(str) {
-      return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
-
-    // ==============================================
-    // 頂部 Toolbar 動作處理
-    // ==============================================
-    refreshPortsBtn.addEventListener('click', () => {
-      wsSend({ action: "refresh_ports" });
-    });
-
-    connectBtn.addEventListener('click', () => {
-      if (isConnected && !isMockMode) {
-        wsSend({ action: "disconnect" });
-      } else {
-        const port = portSelect.value;
-        const baud = parseInt(baudSelect.value);
-        if (!port) {
-          alert("請先選擇序列埠！");
-          return;
-        }
-        wsSend({ action: "connect", port: port, baudrate: baud });
-      }
-    });
-
-    mockBtn.addEventListener('click', () => {
-      if (isMockMode) {
-        wsSend({ action: "disconnect" });
-      } else {
-        wsSend({ action: "connect", port: "MOCK", baudrate: 9600 });
-      }
-    });
-
-    // ==============================================
-    // 實時影像監控器模組 (MediaMTX WebRTC Stream)
-    // ==============================================
-    const DEFAULT_STREAM_URL = "http://mechatronic-4-6.local:8889/live/stream/?network-caching=0";
-    const cameraIframe = document.getElementById('cameraIframe');
-    const videoCard = document.getElementById('videoCard');
-    const videoContainer = document.getElementById('videoContainer');
-    const streamSettingsPanel = document.getElementById('streamSettingsPanel');
-    const toggleStreamSettingsBtn = document.getElementById('toggleStreamSettingsBtn');
-    const streamUrlInput = document.getElementById('streamUrlInput');
-    const saveStreamUrlBtn = document.getElementById('saveStreamUrlBtn');
-    const useHostStreamBtn = document.getElementById('useHostStreamBtn');
-    const resetStreamUrlBtn = document.getElementById('resetStreamUrlBtn');
-    const reloadStreamBtn = document.getElementById('reloadStreamBtn');
-    const theaterModeBtn = document.getElementById('theaterModeBtn');
-    const fullscreenVideoBtn = document.getElementById('fullscreenVideoBtn');
-    const openStreamLink = document.getElementById('openStreamLink');
-    const currentStreamUrlDisplay = document.getElementById('currentStreamUrlDisplay');
-
-    function setStreamUrl(url) {
-      if (!url) return;
-      if (cameraIframe) cameraIframe.src = url;
-      if (streamUrlInput) streamUrlInput.value = url;
-      if (openStreamLink) openStreamLink.href = url;
-      if (currentStreamUrlDisplay) currentStreamUrlDisplay.textContent = '串流: ' + url;
-      try {
-        localStorage.setItem('mechatronics_camera_stream_url', url);
-      } catch (e) { }
-    }
-
-    function initCameraStream() {
-      let savedUrl = null;
-      try {
-        savedUrl = localStorage.getItem('mechatronics_camera_stream_url');
-      } catch (e) { }
-
-      setStreamUrl(savedUrl || DEFAULT_STREAM_URL);
-
-      if (toggleStreamSettingsBtn && streamSettingsPanel) {
-        toggleStreamSettingsBtn.addEventListener('click', () => {
-          const isHidden = streamSettingsPanel.style.display === 'none' || !streamSettingsPanel.style.display;
-          streamSettingsPanel.style.display = isHidden ? 'flex' : 'none';
-        });
-      }
-
-      if (saveStreamUrlBtn && streamUrlInput) {
-        saveStreamUrlBtn.addEventListener('click', () => {
-          const url = streamUrlInput.value.trim();
-          if (url) {
-            setStreamUrl(url);
-            addLog("SYS", `更新影像串流位址: ${url}`);
-          }
-        });
-      }
-
-      if (streamUrlInput) {
-        streamUrlInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            saveStreamUrlBtn.click();
-          }
-        });
-      }
-
-      if (useHostStreamBtn) {
-        useHostStreamBtn.addEventListener('click', () => {
-          const host = window.location.hostname || 'mechatronic-4-6.local';
-          const newUrl = `http://${host}:8889/live/stream/?network-caching=0`;
-          setStreamUrl(newUrl);
-          addLog("SYS", `套用當前主機 IP 串流位址: ${newUrl}`);
-        });
-      }
-
-      if (resetStreamUrlBtn) {
-        resetStreamUrlBtn.addEventListener('click', () => {
-          setStreamUrl(DEFAULT_STREAM_URL);
-          addLog("SYS", `已重設為預設串流位址: ${DEFAULT_STREAM_URL}`);
-        });
-      }
-
-      if (reloadStreamBtn && cameraIframe) {
-        reloadStreamBtn.addEventListener('click', () => {
-          const cur = cameraIframe.src;
-          cameraIframe.src = '';
-          setTimeout(() => {
-            cameraIframe.src = cur;
-            addLog("SYS", "重新載入影像串流...");
-          }, 150);
-        });
-      }
-
-      if (theaterModeBtn && videoCard) {
-        theaterModeBtn.addEventListener('click', () => {
-          const isTheater = videoCard.classList.toggle('theater-mode');
-          theaterModeBtn.classList.toggle('btn-primary', isTheater);
-          theaterModeBtn.textContent = isTheater ? '🗗 縮小' : '📐 劇院';
-        });
-      }
-
-      if (fullscreenVideoBtn && videoContainer) {
-        fullscreenVideoBtn.addEventListener('click', () => {
-          if (!document.fullscreenElement) {
-            if (videoContainer.requestFullscreen) {
-              videoContainer.requestFullscreen();
-            } else if (videoContainer.webkitRequestFullscreen) {
-              videoContainer.webkitRequestFullscreen();
-            } else if (videoContainer.msRequestFullscreen) {
-              videoContainer.msRequestFullscreen();
-            }
-          } else {
-            if (document.exitFullscreen) {
-              document.exitFullscreen();
-            }
-          }
-        });
-      }
-    }
-
-    // ==============================================
-    // 📱 手機/平板無人機雙搖桿操作引擎 (Drone Dual-Joystick Engine)
-    // ==============================================
-    let droneSpeed = 0;
-    let droneTurn = 0;
-    let leftTouchId = null;
-    let rightTouchId = null;
-    let isLeftPointerDown = false;
-    let isRightPointerDown = false;
-
-    const stickCenter = 95;
-    const stickMaxR = 62;
-    const knobR = 24;
-
-    let leftKnobX = stickCenter;
-    let leftKnobY = stickCenter;
-    let rightKnobX = stickCenter;
-    let rightKnobY = stickCenter;
-
-    let droneLastSendTime = 0;
-
-    function openDroneMode() {
-      isDroneViewOpen = true;
-      if (droneControllerView) {
-        droneControllerView.style.display = 'flex';
-      }
-      if (droneCameraIframe && cameraIframe) {
-        droneCameraIframe.src = cameraIframe.src;
-      }
-      // 同步繼電器狀態到手把按鈕
-      updateRelayState(currentRelayState);
-      updateAutoCorrectState(isAutoCorrectEnabled);
-
-      setTimeout(() => {
-        initDroneSticks();
-      }, 50);
-
-      addLog("SYS", "切換至手機/平板雙搖桿手把模式");
-    }
-
-    function exitDroneMode() {
-      isDroneViewOpen = false;
-      if (droneControllerView) {
-        droneControllerView.style.display = 'none';
-      }
-      resetDroneSticks();
-      if (document.fullscreenElement) {
-        try { document.exitFullscreen?.(); } catch (e) { }
-      }
-      addLog("SYS", "已退出手機/平板手把模式，返回桌面儀表板");
-    }
-
-    function toggleDroneFullscreen() {
-      if (!document.fullscreenElement) {
-        try {
-          if (droneControllerView.requestFullscreen) {
-            droneControllerView.requestFullscreen();
-          } else if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen();
-          }
-        } catch (e) { }
-      } else {
-        try { document.exitFullscreen?.(); } catch (e) { }
-      }
-    }
-
-    function setDroneMaxPower(val, btn) {
-      droneMaxPower = parseInt(val) || 200;
-      document.querySelectorAll('.drone-pwr-chip').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      if (maxPowerSelect) maxPowerSelect.value = droneMaxPower;
-    }
-
-    function droneEmergencyReset() {
-      resetDroneSticks();
-      wsSend({ action: "stop" });
-
-      const targetPort = currentPort || (portSelect ? portSelect.value : "");
-      const targetBaud = (baudSelect ? parseInt(baudSelect.value) : 9600) || 9600;
-      const wasMock = isMockMode || targetPort === "MOCK";
-
-      addLog("SYS", "🔄 觸發 Arduino 斷開並重新連線...");
-
-      // 1. 先斷開目前序列埠
-      wsSend({ action: "disconnect" });
-
-      // 2. 短暫延遲後重新連線 (使 Arduino DTR 觸發完整硬體重啟與零偏校準)
-      setTimeout(() => {
-        if (wasMock) {
-          wsSend({ action: "connect", port: "MOCK", baudrate: 9600 });
-          addLog("SYS", "🔄 已重新連線虛擬硬體 (Mock Mode)");
-        } else if (targetPort) {
-          wsSend({ action: "connect", port: targetPort, baudrate: targetBaud });
-          addLog("SYS", `🔄 正在重新連線序列埠: ${targetPort} (Baud: ${targetBaud})...`);
-        } else {
-          wsSend({ action: "reconnect" });
-          wsSend({ action: "refresh_ports" });
-          addLog("SYS", "⚠️ 未偵測到目標序列埠，已發送重連並刷新序列埠清單");
-        }
-      }, 500);
-    }
-
-    // --- 畫布繪製 ---
-    function renderStickCanvas(canvas, knobX, knobY, isVertical, theme) {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.beginPath();
-      ctx.arc(stickCenter, stickCenter, stickMaxR + 12, 0, Math.PI * 2);
-      ctx.fillStyle = '#0f172a';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#334155';
-      ctx.stroke();
-
-      ctx.beginPath();
-      if (isVertical) {
-        ctx.moveTo(stickCenter, stickCenter - stickMaxR);
-        ctx.lineTo(stickCenter, stickCenter + stickMaxR);
-      } else {
-        ctx.moveTo(stickCenter - stickMaxR, stickCenter);
-        ctx.lineTo(stickCenter + stickMaxR, stickCenter);
-      }
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 20;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-
-      ctx.beginPath();
-      if (isVertical) {
-        ctx.moveTo(stickCenter - 18, stickCenter);
-        ctx.lineTo(stickCenter + 18, stickCenter);
-      } else {
-        ctx.moveTo(stickCenter, stickCenter - 18);
-        ctx.lineTo(stickCenter, stickCenter + 18);
-      }
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      const grad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, knobR);
-      grad.addColorStop(0, theme.colors[0]);
-      grad.addColorStop(0.6, theme.colors[1]);
-      grad.addColorStop(1, theme.colors[2]);
-
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, knobR, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = theme.stroke;
-      ctx.stroke();
-
-      ctx.beginPath();
-      [-4, 0, 4].forEach(offset => {
-        if (isVertical) {
-          ctx.moveTo(knobX - 10, knobY + offset);
-          ctx.lineTo(knobX + 10, knobY + offset);
-        } else {
-          ctx.moveTo(knobX + offset, knobY - 10);
-          ctx.lineTo(knobX + offset, knobY + 10);
-        }
-      });
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    function drawLeftStick() {
-      renderStickCanvas(leftStickCanvas, leftKnobX, leftKnobY, true, {
-        colors: ['#7dd3fc', '#0284c7', '#0369a1'],
-        stroke: '#bae6fd'
-      });
-    }
-
-    function drawRightStick() {
-      renderStickCanvas(rightStickCanvas, rightKnobX, rightKnobY, false, {
-        colors: ['#c084fc', '#9333ea', '#6b21a8'],
-        stroke: '#e9d5ff'
-      });
-    }
-
-    function initDroneSticks() {
-      drawLeftStick();
-      drawRightStick();
-    }
-
-    function resetDroneSticks() {
-      leftKnobX = stickCenter;
-      leftKnobY = stickCenter;
-      rightKnobX = stickCenter;
-      rightKnobY = stickCenter;
-      droneSpeed = 0;
-      droneTurn = 0;
-      leftTouchId = null;
-      rightTouchId = null;
-      isLeftPointerDown = false;
-      isRightPointerDown = false;
-
-      if (leftStickSpeedVal) leftStickSpeedVal.innerText = 0;
-      if (rightStickTurnVal) rightStickTurnVal.innerText = 0;
-
-      drawLeftStick();
-      drawRightStick();
-      sendDroneDrive(true);
-    }
-
-    function sendDroneDrive(force = false, isHeartbeat = false) {
-      const now = performance.now();
-      if (force || isHeartbeat || now - droneLastSendTime >= SEND_INTERVAL_MS) {
-        droneLastSendTime = now;
-        const payload = {
-          action: "dual_motor",
-          turn: droneTurn,
-          speed: droneSpeed
-        };
-        if (isHeartbeat) payload.heartbeat = true;
-        wsSend(payload);
-
-        if (droneTurn === 0 && droneSpeed === 0 && !isHeartbeat) {
-          wsSend({ action: "stop" });
-          setTimeout(() => {
-            if (droneTurn === 0 && droneSpeed === 0) {
-              wsSend({ action: "stop" });
-            }
-          }, 35);
-        }
-      }
-    }
-
-    function calcStickNormalizedDelta(clientPos, rectOrigin, center, maxRadius) {
-      const delta = Math.max(-maxRadius, Math.min(maxRadius, (clientPos - rectOrigin) - center));
-      let norm = -delta / maxRadius;
-      if (Math.abs(norm) < 0.08) norm = 0;
-      return { delta, norm };
-    }
-
-    // --- 左搖桿事件 (前進 / 後退) ---
-    function updateLeftStickFromClientY(clientY) {
-      const rect = leftStickCanvas.getBoundingClientRect();
-      const { delta, norm } = calcStickNormalizedDelta(clientY, rect.top, stickCenter, stickMaxR);
-      leftKnobY = stickCenter + delta;
-      leftKnobX = stickCenter;
-      droneSpeed = Math.round(norm * droneMaxPower);
-      if (leftStickSpeedVal) leftStickSpeedVal.innerText = droneSpeed;
-      drawLeftStick();
-      sendDroneDrive();
-    }
-
-    function releaseLeftStick() {
-      leftKnobX = stickCenter;
-      leftKnobY = stickCenter;
-      droneSpeed = 0;
-      leftTouchId = null;
-      isLeftPointerDown = false;
-      if (leftStickSpeedVal) leftStickSpeedVal.innerText = 0;
-      drawLeftStick();
-      sendDroneDrive(true);
-    }
-
-    // --- 右搖桿事件 (左轉 / 右轉) ---
-    function updateRightStickFromClientX(clientX) {
-      const rect = rightStickCanvas.getBoundingClientRect();
-      const { delta, norm } = calcStickNormalizedDelta(clientX, rect.left, stickCenter, stickMaxR);
-      rightKnobX = stickCenter + delta;
-      rightKnobY = stickCenter;
-      droneTurn = Math.round(norm * droneMaxPower);
-      if (rightStickTurnVal) rightStickTurnVal.innerText = droneTurn;
-      drawRightStick();
-      sendDroneDrive();
-    }
-
-    function releaseRightStick() {
-      rightKnobX = stickCenter;
-      rightKnobY = stickCenter;
-      droneTurn = 0;
-      rightTouchId = null;
-      isRightPointerDown = false;
-      if (rightStickTurnVal) rightStickTurnVal.innerText = 0;
-      drawRightStick();
-      sendDroneDrive(true);
-    }
-
-    function bindStickCanvasEvents(canvas, { getTouchId, setTouchId, getPointerDown, setPointerDown, onUpdate, onRelease, getClientCoord }) {
-      canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.changedTouches[0];
-        setTouchId(touch.identifier);
-        onUpdate(getClientCoord(touch));
-      }, { passive: false });
-
-      canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touchId = getTouchId();
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === touchId) {
-            onUpdate(getClientCoord(e.changedTouches[i]));
-            break;
-          }
-        }
-      }, { passive: false });
-
-      const handleTouchEnd = (e) => {
-        const touchId = getTouchId();
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === touchId) {
-            onRelease();
-            break;
-          }
-        }
-      };
-      canvas.addEventListener('touchend', handleTouchEnd);
-      canvas.addEventListener('touchcancel', handleTouchEnd);
-
-      canvas.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch') return;
-        setPointerDown(true);
-        canvas.setPointerCapture(e.pointerId);
-        onUpdate(getClientCoord(e));
-      });
-
-      canvas.addEventListener('pointermove', (e) => {
-        if (getPointerDown()) {
-          onUpdate(getClientCoord(e));
-        }
-      });
-
-      const handlePointerUp = (e) => {
-        if (getPointerDown()) {
-          try { canvas.releasePointerCapture(e.pointerId); } catch (ex) { }
-          onRelease();
-        }
-      };
-      canvas.addEventListener('pointerup', handlePointerUp);
-      canvas.addEventListener('pointercancel', handlePointerUp);
-    }
-
-    function setupDroneStickEvents() {
-      if (!leftStickCanvas || !rightStickCanvas) return;
-
-      bindStickCanvasEvents(leftStickCanvas, {
-        getTouchId: () => leftTouchId,
-        setTouchId: (id) => { leftTouchId = id; },
-        getPointerDown: () => isLeftPointerDown,
-        setPointerDown: (val) => { isLeftPointerDown = val; },
-        onUpdate: updateLeftStickFromClientY,
-        onRelease: releaseLeftStick,
-        getClientCoord: (ev) => ev.clientY
-      });
-
-      bindStickCanvasEvents(rightStickCanvas, {
-        getTouchId: () => rightTouchId,
-        setTouchId: (id) => { rightTouchId = id; },
-        getPointerDown: () => isRightPointerDown,
-        setPointerDown: (val) => { isRightPointerDown = val; },
-        onUpdate: updateRightStickFromClientX,
-        onRelease: releaseRightStick,
-        getClientCoord: (ev) => ev.clientX
-      });
-
-      window.addEventListener('touchmove', (e) => {
-        if (!isDroneViewOpen) return;
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const t = e.changedTouches[i];
-          if (t.identifier === leftTouchId) {
-            updateLeftStickFromClientY(t.clientY);
-          } else if (t.identifier === rightTouchId) {
-            updateRightStickFromClientX(t.clientX);
-          }
-        }
-      }, { passive: false });
-
-      const handleGlobalTouchEnd = (e) => {
-        if (!isDroneViewOpen) return;
-        const activeIds = new Set();
-        for (let i = 0; i < e.touches.length; i++) {
-          activeIds.add(e.touches[i].identifier);
-        }
-        if (leftTouchId !== null && !activeIds.has(leftTouchId)) {
-          releaseLeftStick();
-        }
-        if (rightTouchId !== null && !activeIds.has(rightTouchId)) {
-          releaseRightStick();
-        }
-        if (e.touches.length === 0) {
-          if (leftTouchId !== null || droneSpeed !== 0) releaseLeftStick();
-          if (rightTouchId !== null || droneTurn !== 0) releaseRightStick();
-        }
-      };
-
-      window.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
-      window.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true });
-
-      window.addEventListener('blur', () => {
-        if (isDroneViewOpen) resetDroneSticks();
-      });
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && isDroneViewOpen) resetDroneSticks();
-      });
-      window.addEventListener('pointerup', () => {
-        if (isLeftPointerDown) releaseLeftStick();
-        if (isRightPointerDown) releaseRightStick();
-      });
-      window.addEventListener('pointercancel', () => {
-        if (isLeftPointerDown) releaseLeftStick();
-        if (isRightPointerDown) releaseRightStick();
-      });
-    }
-
-    // 鍵盤 ESC 退出手把模式
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && isDroneViewOpen) {
-        exitDroneMode();
-      }
-    });
-
-    // ==============================================
-    // 搖桿心跳保活機制 (Heartbeat Keep-Alive)
-    // 當固定搖桿數值不動時，每 100ms 定期重發當前速度給 Arduino，防止 1000ms 超時安全煞停
-    // ==============================================
-    function setupHeartbeatTimer() {
-      setInterval(() => {
-        const now = performance.now();
-
-        if (isDroneViewOpen) {
-          const isTouching = (leftTouchId !== null || rightTouchId !== null || isLeftPointerDown || isRightPointerDown);
-          const isMoving = (droneSpeed !== 0 || droneTurn !== 0);
-
-          if ((isMoving || isTouching) && now - droneLastSendTime >= HEARTBEAT_INTERVAL_MS) {
-            sendDroneDrive(false, true);
-          }
-        } else {
-          const isMoving = (desktopSpeed !== 0 || desktopTurn !== 0);
-          const isHoldingKey = (keyState.w || keyState.s || keyState.a || keyState.d);
-
-          if ((isMoving || isDragging || isHoldingKey) && now - lastSendTime >= HEARTBEAT_INTERVAL_MS) {
-            sendDesktopDrive(desktopTurn, desktopSpeed, false, true);
-          }
-        }
-      }, 40);
-    }
-
-    // 啟動 WebSocket、方向按鈕與影像監控事件
-    window.addEventListener('load', () => {
-      initWebSocket();
-      setupDpadEvents();
-      initCameraStream();
-      setupDroneStickEvents();
-      setupHeartbeatTimer();
-    });
   </script>
 </body>
 

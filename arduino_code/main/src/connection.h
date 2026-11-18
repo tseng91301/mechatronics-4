@@ -10,12 +10,19 @@
 #define CMD_RELAY             0x03  // 控制繼電器 (Payload: 2 bytes -> relay_id: uint8, state: uint8)
 #define CMD_SET_AUTO_CORRECT  0x04  // 自動校正開關 (Payload: 1 byte -> enable: uint8, 1:開, 0:關)
 #define CMD_RESET_IMU_YAW     0x05  // 朝向歸零/重設 (Payload: 0 bytes)
+#define CMD_SET_HEADING       0x06  // 指定目標航向導航 (Payload: 4 bytes -> target_yaw_x10: int16, speed: int16)
+#define CMD_SET_SWEEP         0x07  // 擺頭開關與參數設定 (Payload: 5 bytes -> enable: uint8, amp_x10: int16, period_ms: uint16)
+#define CMD_STOP_MOTION       0x08  // 煞停並解除航向鎖定與擺頭 (Payload: 0 bytes)
+#define CMD_SET_SAFETY_THRESH 0x09  // 設定防撞距離門檻 (Payload: 2 bytes uint16_t mm, 0:關閉保護)
+#define CMD_GET_SAFETY_THRESH 0x0A  // 查詢當前防撞距離門檻 (Payload: 0 bytes)
+#define CMD_SET_TURN_SPEED    0x0B  // 設定對齊旋轉轉速上限 (Payload: 2 bytes int16_t speed, 40~200)
 
 // Arduino 發送給電腦的訊息指令
 #define CMD_ULTRASONIC        0x10  // 超音波數據 (Payload: 4 bytes int32 毫米，或 5 bytes: id + mm)
 #define CMD_ULTRASONIC_FRONT  0x11  // 前方超音波數據 (Payload: 4 bytes int32 毫米)
 #define CMD_ULTRASONIC_RIGHT  0x12  // 右方超音波數據 (Payload: 4 bytes int32 毫米)
 #define CMD_IMU_DATA          0x13  // IMU 姿態數據 (Payload: 7 bytes -> yaw_x10: int16, pitch_x10: int16, roll_x10: int16, auto_correct: uint8)
+#define CMD_SAFETY_THRESH_DATA 0x14 // 回傳防撞距離門檻 (Payload: 2 bytes uint16_t mm)
 #define CMD_LOG_MSG           0x20  // Arduino 發送文字訊息給電腦 (Payload: 字串)
 
 /**
