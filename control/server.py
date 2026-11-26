@@ -227,6 +227,7 @@ class DualMotorRequest(BaseModel):
 
 
 class StrategyStartRequest(BaseModel):
+    strategy_id: Optional[str] = None
     start_step: int = 1
     enable_vision: bool = True
     rtsp_url: str = "rtsp://localhost:8554/live/stream"
@@ -234,8 +235,29 @@ class StrategyStartRequest(BaseModel):
     step_mode: bool = False
 
 
+class StrategySelectRequest(BaseModel):
+    strategy_id: str
+
+
 class StrategyStepModeRequest(BaseModel):
     step_mode: bool = True
+
+
+@app.get("/api/strategy/list")
+async def api_strategy_list():
+    return {"strategies": strategy_runner.list_strategies()}
+
+
+@app.post("/api/strategy/select")
+async def api_strategy_select(req: StrategySelectRequest):
+    ok, msg = strategy_runner.select_strategy(req.strategy_id)
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
+
+
+@app.post("/api/strategy/reload")
+async def api_strategy_reload():
+    ok, msg = strategy_runner.reload_strategies()
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
 
 
 @app.get("/api/strategy/status")
@@ -251,6 +273,7 @@ async def api_strategy_start(req: StrategyStartRequest):
         rtsp_url=req.rtsp_url,
         reset_imu=req.reset_imu,
         step_mode=req.step_mode,
+        strategy_id=req.strategy_id,
     )
     return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
 
@@ -577,6 +600,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 bridge.disconnect()
 
             elif action == "strategy_start":
+                strategy_id = data.get("strategy_id")
                 start_step = int(data.get("start_step", 1))
                 enable_vision = bool(data.get("enable_vision", True))
                 rtsp_url = str(data.get("rtsp_url", "rtsp://localhost:8554/live/stream"))
@@ -588,9 +612,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     rtsp_url=rtsp_url,
                     reset_imu=reset_imu,
                     step_mode=step_mode,
+                    strategy_id=strategy_id,
                 )
                 if not ok:
                     await websocket.send_json(strategy_runner.get_status())
+
+            elif action == "strategy_select":
+                sid = str(data.get("strategy_id", ""))
+                ok, _ = strategy_runner.select_strategy(sid)
+                if not ok:
+                    await websocket.send_json(strategy_runner.get_status())
+
+            elif action == "strategy_reload":
+                strategy_runner.reload_strategies()
 
             elif action == "strategy_step_next":
                 strategy_runner.step_next()

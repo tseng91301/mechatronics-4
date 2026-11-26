@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 自動任務策略執行引擎 (StrategyRunner)
-支援在背景執行緒運行策略、從任意步驟開始執行、即時緊急停止、以及透過 RobotController.notify 推播執行進度給網頁。
+支援多策略動態切換、背景執行緒運行、從任意步驟開始、單步除錯模式與即時緊急停止。
 """
 
 import threading
-import time
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
@@ -14,29 +13,60 @@ try:
 except ImportError:
     from robot_controller import RobotController
 
-from .arena_strategy import StrategyStep, build_arena_strategy
+from .arena_strategy import StrategyStep
+from .registry import StrategyDefinition, discover_strategies
 from .techniques import StrategyContext, VisionSource
 
 
 class StrategyRunner:
-    """管理自動任務策略的生命週期、步驟追蹤與即時中斷"""
+    """管理自動任務策略的生命週期、多策略切換、步驟追蹤與即時中斷"""
 
-    def __init__(self, robot: RobotController, steps: Optional[List[StrategyStep]] = None):
+    def __init__(
+        self,
+        robot: RobotController,
+        steps: Optional[List[StrategyStep]] = None,
+        default_strategy_id: Optional[str] = None,
+    ):
         self.robot = robot
-        self._steps: List[StrategyStep] = steps if steps is not None else build_arena_strategy()
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._next_step_event = threading.Event()
         self._step_mode: bool = False
         self._worker_thread: Optional[threading.Thread] = None
 
+        self._strategies: Dict[str, StrategyDefinition] = discover_strategies()
+        if steps is not None:
+            custom_id = default_strategy_id or "custom"
+            self._strategies = {
+                custom_id: StrategyDefinition(
+                    strategy_id=custom_id,
+                    name="自訂策略",
+                    description="透過外部傳入步驟建立之策略",
+                    builder=lambda s=list(steps): list(s),
+                ),
+                **self._strategies,
+            }
+            self._current_strategy_id = custom_id
+        else:
+            if default_strategy_id and default_strategy_id in self._strategies:
+                self._current_strategy_id = default_strategy_id
+            elif self._strategies:
+                self._current_strategy_id = next(iter(self._strategies.keys()))
+            else:
+                self._current_strategy_id = ""
+
+        cur_def = self._strategies.get(self._current_strategy_id)
+        self._steps: List[StrategyStep] = cur_def.builder() if cur_def else []
+
         self._state: Dict[str, Any] = {
             "status": "IDLE",  # IDLE | RUNNING | PAUSED | STOPPED | COMPLETED | ERROR
-            "strategy_name": "場地自動清掃策略 (STRATEGY.md)",
+            "strategy_id": self._current_strategy_id,
+            "strategy_name": cur_def.name if cur_def else "尚未註冊策略",
+            "strategy_description": cur_def.description if cur_def else "",
             "current_step": 0,
             "total_steps": len(self._steps),
             "step_title": "待命中",
-            "sub_state": "",
+            "sub_state": cur_def.description if cur_def else "",
             "start_step": 1,
             "enable_vision": True,
             "vision_available": False,
@@ -45,23 +75,103 @@ class StrategyRunner:
             "error": "",
         }
 
+    def list_strategies(self) -> List[Dict[str, Any]]:
+        """回傳所有已探索/註冊的策略清單"""
+        with self._lock:
+            defs = list(self._strategies.values())
+        result = []
+        for d in defs:
+            try:
+                step_cnt = len(d.builder())
+            except Exception:
+                step_cnt = 0
+            result.append({
+                "id": d.strategy_id,
+                "name": d.name,
+                "description": d.description,
+                "step_count": step_cnt,
+            })
+        return result
+
+    def reload_strategies(self) -> Tuple[bool, str]:
+        """重新掃描 strategies/ 目錄載入新增或修改後的策略"""
+        with self._lock:
+            if self._state["status"] in ("RUNNING", "PAUSED"):
+                return (False, "策略執行期間無法重新掃描策略清單")
+
+            discovered = discover_strategies(reload_modules=True)
+            if "custom" in self._strategies and "custom" not in discovered:
+                discovered["custom"] = self._strategies["custom"]
+            self._strategies = discovered
+
+            if self._current_strategy_id not in self._strategies and self._strategies:
+                self._current_strategy_id = next(iter(self._strategies.keys()))
+
+            cur_def = self._strategies.get(self._current_strategy_id)
+            self._steps = cur_def.builder() if cur_def else []
+            self._state.update({
+                "status": "IDLE",
+                "strategy_id": self._current_strategy_id,
+                "strategy_name": cur_def.name if cur_def else "無可用策略",
+                "strategy_description": cur_def.description if cur_def else "",
+                "current_step": 0,
+                "total_steps": len(self._steps),
+                "step_title": "待命中",
+                "sub_state": cur_def.description if cur_def else "",
+                "start_step": 1,
+            })
+
+        self._broadcast_status()
+        return (True, f"已重新掃描策略清單，共載入 {len(self._strategies)} 個策略")
+
+    def select_strategy(self, strategy_id: str) -> Tuple[bool, str]:
+        """切換目前選取的策略 (僅於非執行狀態可切換)"""
+        with self._lock:
+            if self._state["status"] in ("RUNNING", "PAUSED"):
+                return (False, "策略正在執行或暫停中，請先停止後再切換策略")
+            if strategy_id not in self._strategies:
+                return (False, f"找不到策略 ID: {strategy_id}")
+
+            cur_def = self._strategies[strategy_id]
+            self._current_strategy_id = strategy_id
+            self._steps = cur_def.builder()
+            self._state.update({
+                "status": "IDLE",
+                "strategy_id": cur_def.strategy_id,
+                "strategy_name": cur_def.name,
+                "strategy_description": cur_def.description,
+                "current_step": 0,
+                "total_steps": len(self._steps),
+                "step_title": "待命中",
+                "sub_state": cur_def.description,
+                "start_step": 1,
+                "error": "",
+            })
+
+        self.robot.log("SYS", f"已切換策略：{cur_def.name} ({len(self._steps)} 步驟)")
+        self._broadcast_status()
+        return (True, f"已切換至策略: {cur_def.name}")
+
     def get_steps_metadata(self) -> List[Dict[str, Any]]:
-        """回傳所有步驟的編號、標題與說明，供網頁渲染步驟選單與進度列表"""
+        """回傳目前選取策略的所有步驟編號、標題與說明"""
+        with self._lock:
+            steps = list(self._steps)
         return [
             {
                 "index": s.index,
                 "title": s.title,
                 "description": s.description,
             }
-            for s in self._steps
+            for s in steps
         ]
 
     def get_status(self) -> Dict[str, Any]:
-        """取得目前策略執行狀態快照 (含步驟列表)"""
+        """取得目前策略執行狀態快照 (含可用策略清單與當前步驟列表)"""
         with self._lock:
             snap = dict(self._state)
         snap["type"] = "strategy_status"
         snap["steps"] = self.get_steps_metadata()
+        snap["available_strategies"] = self.list_strategies()
         return snap
 
     def _broadcast_status(self):
@@ -79,6 +189,7 @@ class StrategyRunner:
         rtsp_url: str = "rtsp://localhost:8554/live/stream",
         reset_imu: bool = False,
         step_mode: bool = False,
+        strategy_id: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """
         啟動自動任務策略 (非阻塞，於背景執行緒運行)。
@@ -87,14 +198,10 @@ class StrategyRunner:
         :param rtsp_url: 影像串流位址 (預設 rtsp://localhost:8554/live/stream)
         :param reset_imu: 啟動前是否將 IMU Yaw 歸零
         :param step_mode: 是否啟用單步除錯模式 (每跑完一步暫停等待下一步指令)
+        :param strategy_id: 指定要執行的策略 ID (若為 None 則使用目前選取的策略)
         """
         if not self.robot.is_connected:
             msg = "無法啟動策略：請先連線 Arduino 序列埠 (或開啟模擬模式)"
-            self.robot.log("SYS", msg)
-            return (False, msg)
-
-        if start_step < 1 or start_step > len(self._steps):
-            msg = f"無效的起始步驟：{start_step} (有效範圍 1~{len(self._steps)})"
             self.robot.log("SYS", msg)
             return (False, msg)
 
@@ -106,14 +213,33 @@ class StrategyRunner:
             ):
                 return (False, "策略目前正在執行中，請先停止後再啟動")
 
+            target_sid = strategy_id or self._current_strategy_id
+            if target_sid not in self._strategies:
+                msg = f"找不到指定的策略: {target_sid}"
+                self.robot.log("SYS", msg)
+                return (False, msg)
+
+            cur_def = self._strategies[target_sid]
+            self._current_strategy_id = target_sid
+            self._steps = cur_def.builder()
+
+            if start_step < 1 or start_step > len(self._steps):
+                msg = f"無效的起始步驟：{start_step} (有效範圍 1~{len(self._steps)})"
+                self.robot.log("SYS", msg)
+                return (False, msg)
+
+            steps_snapshot = list(self._steps)
             self._stop_event.clear()
             self._next_step_event.clear()
             self._step_mode = bool(step_mode)
             self._state.update({
                 "status": "RUNNING",
+                "strategy_id": cur_def.strategy_id,
+                "strategy_name": cur_def.name,
+                "strategy_description": cur_def.description,
                 "current_step": start_step,
-                "total_steps": len(self._steps),
-                "step_title": self._steps[start_step - 1].title,
+                "total_steps": len(steps_snapshot),
+                "step_title": steps_snapshot[start_step - 1].title,
                 "sub_state": "初始化策略中...",
                 "start_step": start_step,
                 "enable_vision": bool(enable_vision),
@@ -126,12 +252,12 @@ class StrategyRunner:
         self._broadcast_status()
         self._worker_thread = threading.Thread(
             target=self._run_worker,
-            args=(start_step, bool(enable_vision), rtsp_url, bool(reset_imu)),
+            args=(steps_snapshot, cur_def.name, start_step, bool(enable_vision), rtsp_url, bool(reset_imu)),
             daemon=True,
         )
         self._worker_thread.start()
         mode_str = " [單步除錯模式]" if step_mode else ""
-        return (True, f"已從第 {start_step} 步啟動自動策略{mode_str}")
+        return (True, f"已從第 {start_step} 步啟動 [{cur_def.name}]{mode_str}")
 
     def step_next(self) -> Tuple[bool, str]:
         """單步除錯模式下，放行執行下一個步驟"""
@@ -181,7 +307,15 @@ class StrategyRunner:
         self._broadcast_status()
         return (True, "已停止策略並煞停車輛")
 
-    def _run_worker(self, start_step: int, enable_vision: bool, rtsp_url: str, reset_imu: bool):
+    def _run_worker(
+        self,
+        all_steps: List[StrategyStep],
+        strategy_name: str,
+        start_step: int,
+        enable_vision: bool,
+        rtsp_url: str,
+        reset_imu: bool,
+    ):
         vision: Optional[VisionSource] = None
         saved_safety_mm = self.robot.get_safety_threshold_mm()
         restore_safety_mm = saved_safety_mm if saved_safety_mm > 0 else 150
@@ -209,7 +343,6 @@ class StrategyRunner:
                         self.robot.log("SYS", "[策略視覺] 已啟用模擬影格注入模式 (/sim)")
                     else:
                         self.robot.log("SYS", f"[策略視覺] 已背景連線影像串流: {rtsp_url}")
-                    # 稍候最多 0.5 秒讓首幀有機會進來
                     ctx.sleep(0.5)
                 else:
                     self.robot.log("SYS", "[策略視覺] OpenCV 不可用，將以純感測器模式運行")
@@ -227,10 +360,10 @@ class StrategyRunner:
             }
             self.robot.log(
                 "SYS",
-                f"▶ 策略開始執行：從第 {start_step}/{len(self._steps)} 步開始 (基準 Yaw={runtime_state['ref_yaw']:.1f}°)",
+                f"▶ [{strategy_name}] 開始執行：從第 {start_step}/{len(all_steps)} 步開始 (基準 Yaw={runtime_state['ref_yaw']:.1f}°)",
             )
 
-            steps_to_run = self._steps[start_step - 1 :]
+            steps_to_run = all_steps[start_step - 1 :]
             for idx, step in enumerate(steps_to_run):
                 if self._stop_event.is_set():
                     break
@@ -244,7 +377,7 @@ class StrategyRunner:
                     sub_state=step.description,
                     vision_available=vis_ok,
                 )
-                self.robot.log("SYS", f"=== [步驟 {step.index}/{len(self._steps)}] {step.title} ===")
+                self.robot.log("SYS", f"=== [步驟 {step.index}/{len(all_steps)}] {step.title} ===")
 
                 ok = step.execute(ctx, runtime_state)
                 if not ok or self._stop_event.is_set():
@@ -294,7 +427,7 @@ class StrategyRunner:
                     sub_state="全部策略步驟已執行完成！",
                     vision_available=(vision.is_available() if vision is not None else False),
                 )
-                self.robot.log("SYS", "🎉 自動任務策略已全部執行完成！")
+                self.robot.log("SYS", f"🎉 [{strategy_name}] 全部步驟已執行完成！")
 
         except Exception as exc:
             err_msg = str(exc)
@@ -309,7 +442,6 @@ class StrategyRunner:
             self.robot.set_sweep(False)
             self.robot.set_vacuum(False)
             self.robot.stop()
-            # 確保策略結束或中止後一定恢復防撞門檻
             if saved_safety_mm > 0:
                 self.robot.set_safety_threshold(saved_safety_mm)
             if vision is not None:

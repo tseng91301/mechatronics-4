@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 主策略程式 (Arena Strategy)
-參照 strategies/STRATEGY.md 實作 16 步驟場地巡航、沿牆、紙屑視覺對準與擺頭吸取策略。
+參照 strategies/arena_strategy.md 實作 16 步驟場地巡航、沿牆、紙屑視覺對準與擺頭吸取策略。
 將 Step 1 拆分為「純 IMU 盲走進入」與「巡航至場地中間」兩步，支援從任意步驟開始執行。
 """
 
@@ -97,7 +97,7 @@ def build_arena_strategy(
     right_open_cm: float = 100.0,
 ) -> List[StrategyStep]:
     """
-    建構 16 步驟場地清掃主策略清單 (對應 STRATEGY.md)。
+    建構 16 步驟場地清掃主策略清單 (對應 arena_strategy.md)。
     """
 
     def step_blind_entry(ctx: StrategyContext, st: Dict[str, Any]) -> bool:
@@ -196,3 +196,9 @@ def build_arena_strategy(
 
 
 ARENA_STEPS = build_arena_strategy()
+
+# 供 strategies/registry.py 自動探索註冊之標準策略介面
+STRATEGY_ID = "arena_strategy"
+STRATEGY_NAME = "競賽場地清掃策略 (arena_strategy)"
+STRATEGY_DESC = "16 步驟進場、場地巡航、沿右牆修正、紙屑視覺對準與擺頭吸取流程"
+build_strategy = build_arena_strategy
