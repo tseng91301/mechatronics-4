@@ -596,6 +596,96 @@
       color: #fff;
       box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
     }
+
+    /* ============================================================
+       自動任務策略控制台 (Autonomous Strategy Runner)
+       ============================================================ */
+    .strategy-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .strategy-chk {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .strategy-live-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      background: #0a0f1d;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.84rem;
+    }
+
+    .strategy-steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 0.5rem;
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .strategy-step-item {
+      background: #0a0f1d;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .strategy-step-item:hover {
+      border-color: #38bdf8;
+      background: #111b33;
+    }
+
+    .strategy-step-item.active {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.22);
+    }
+
+    .strategy-step-item.done {
+      border-color: #059669;
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .strategy-step-item.stopped {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    .strategy-step-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .strategy-step-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
   </style>
 </head>
 
@@ -918,6 +1008,58 @@
 
     </div>
 
+    <!-- ==================== 自動任務策略控制台 ==================== -->
+    <div class="card">
+      <div class="card-title">
+        <span>🤖 自動任務策略控制台 (STRATEGY.md — 16 步驟流程)</span>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span id="strategyStatusBadge" class="status-badge">
+            <span class="status-dot"></span>
+            <span id="strategyStatusText">IDLE (待命)</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="strategy-controls">
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span style="font-size:0.8rem; color:var(--text-muted);">起始步驟:</span>
+          <select id="strategyStartStepSelect" style="min-width:240px;">
+            <option value="1">1. 盲走進入場地 (3 秒)</option>
+          </select>
+        </div>
+
+        <label class="strategy-chk" title="讀取 rtsp://localhost:8554/live/stream 進行紙屑辨識對準">
+          <input type="checkbox" id="strategyVisionChk" checked>
+          <span>啟用影像紙屑對準 (/live/stream)</span>
+        </label>
+
+        <label class="strategy-chk" title="啟動策略前自動將 IMU 航向角歸零">
+          <input type="checkbox" id="strategyResetImuChk">
+          <span>啟動前 IMU 歸零</span>
+        </label>
+
+        <button id="strategyStartBtn" class="btn btn-success">▶ 執行策略</button>
+        <button id="strategyStopBtn" class="btn btn-danger" disabled>⏹ 停止策略</button>
+      </div>
+
+      <div class="strategy-live-banner">
+        <div>
+          <span style="color:var(--text-muted);">目前進度：</span>
+          <span id="strategyStepProgress" style="font-family:'JetBrains Mono', monospace; color:#38bdf8; font-weight:700;">0 / 16</span>
+          <span style="margin:0 0.4rem; color:#475569;">|</span>
+          <strong id="strategyStepTitle" style="color:var(--text-main);">待命中</strong>
+        </div>
+        <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <span>子狀態：<span id="strategySubState" style="color:#a7f3d0;">--</span></span>
+          <span>視覺串流：<span id="strategyVisionState" style="color:var(--text-muted);">未啟動</span></span>
+        </div>
+      </div>
+
+      <div class="strategy-steps-grid" id="strategyStepsGrid">
+        <!-- 步驟清單將由 WebSocket strategy_status 動態產生 -->
+      </div>
+    </div>
+
     <!-- ==================== 底部: 通訊日誌終端與單馬達微調 ==================== -->
     <div class="card">
       <div class="card-title">
@@ -1038,6 +1180,21 @@
     const clearLogBtn = document.getElementById('clearLogBtn');
     const pingBtn = document.getElementById('pingBtn');
 
+    // 自動任務策略
+    const strategyStatusBadge = document.getElementById('strategyStatusBadge');
+    const strategyStatusText = document.getElementById('strategyStatusText');
+    const strategyStartStepSelect = document.getElementById('strategyStartStepSelect');
+    const strategyVisionChk = document.getElementById('strategyVisionChk');
+    const strategyResetImuChk = document.getElementById('strategyResetImuChk');
+    const strategyStartBtn = document.getElementById('strategyStartBtn');
+    const strategyStopBtn = document.getElementById('strategyStopBtn');
+    const strategyStepProgress = document.getElementById('strategyStepProgress');
+    const strategyStepTitle = document.getElementById('strategyStepTitle');
+    const strategySubState = document.getElementById('strategySubState');
+    const strategyVisionState = document.getElementById('strategyVisionState');
+    const strategyStepsGrid = document.getElementById('strategyStepsGrid');
+    let currentStrategyStatus = "IDLE";
+
     // ============================================================
     // 初始化與 WebSocket 連線
     // ============================================================
@@ -1059,6 +1216,7 @@
         addLog("SYS", "WebSocket 連線已建立", "");
         wsSend({ action: "refresh_ports" });
         wsSend({ action: "get_safety_threshold" });
+        wsSend({ action: "get_strategy_status" });
         const curTurnSpd = parseInt(turnSpeedSelect.value) || 90;
         wsSend({ action: "set_turn_speed", turn_speed: curTurnSpd });
       };
@@ -1108,6 +1266,9 @@
       }
       else if (type === "relay") {
         updateRelayState(data.state);
+      }
+      else if (type === "strategy_status") {
+        updateStrategyStatus(data);
       }
       else if (type === "e_stop") {
         if (cruiseHeartbeatTimer) {
@@ -1770,9 +1931,149 @@
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
           e.preventDefault();
+          if (currentStrategyStatus === "RUNNING") {
+            wsSend({ action: "strategy_stop" });
+          }
           triggerStopMotion();
         }
       });
+
+      // 自動任務策略控制按鈕
+      strategyStartBtn.addEventListener('click', () => {
+        if (!isConnected) {
+          alert("請先連線序列埠 (或啟動模擬模式)！");
+          return;
+        }
+        const startStep = parseInt(strategyStartStepSelect.value) || 1;
+        const enableVision = !!strategyVisionChk.checked;
+        const resetImu = !!strategyResetImuChk.checked;
+        wsSend({
+          action: "strategy_start",
+          start_step: startStep,
+          enable_vision: enableVision,
+          reset_imu: resetImu
+        });
+        addLog("TX", `啟動自動任務策略：從第 ${startStep} 步開始`);
+      });
+
+      strategyStopBtn.addEventListener('click', () => {
+        wsSend({ action: "strategy_stop" });
+        triggerStopMotion();
+        addLog("TX", "請求緊急停止自動任務策略");
+      });
+    }
+
+    // ============================================================
+    // 自動任務策略狀態更新
+    // ============================================================
+    function updateStrategyStatus(data) {
+      const status = data.status || "IDLE";
+      currentStrategyStatus = status;
+      const curStep = data.current_step || 0;
+      const totalSteps = data.total_steps || 16;
+      const steps = Array.isArray(data.steps) ? data.steps : [];
+
+      // 若下拉選單尚未填充完整步驟，動態同步並保留目前選擇
+      if (steps.length > 0 && strategyStartStepSelect.options.length !== steps.length) {
+        const prevVal = strategyStartStepSelect.value || "1";
+        strategyStartStepSelect.innerHTML = "";
+        steps.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = String(s.index);
+          opt.text = `${s.index}. ${s.title}`;
+          strategyStartStepSelect.appendChild(opt);
+        });
+        strategyStartStepSelect.value = prevVal;
+      }
+
+      // 更新狀態徽章
+      strategyStatusBadge.className = "status-badge";
+      if (status === "RUNNING") {
+        strategyStatusBadge.classList.add("connected");
+        strategyStatusText.innerText = "RUNNING (執行中)";
+      } else if (status === "COMPLETED") {
+        strategyStatusBadge.classList.add("connected");
+        strategyStatusText.innerText = "COMPLETED (已完成)";
+      } else if (status === "STOPPED") {
+        strategyStatusBadge.classList.add("mock");
+        strategyStatusText.innerText = "STOPPED (已停止)";
+      } else if (status === "ERROR") {
+        strategyStatusBadge.classList.add("mock");
+        strategyStatusText.innerText = "ERROR (異常)";
+      } else {
+        strategyStatusText.innerText = "IDLE (待命)";
+      }
+
+      strategyStartBtn.disabled = (status === "RUNNING");
+      strategyStopBtn.disabled = (status !== "RUNNING");
+      strategyStartStepSelect.disabled = (status === "RUNNING");
+
+      strategyStepProgress.innerText = `${curStep} / ${totalSteps}`;
+      strategyStepTitle.innerText = data.step_title || "待命中";
+      strategySubState.innerText = data.sub_state || "--";
+
+      if (!data.enable_vision) {
+        strategyVisionState.innerText = "已停用";
+        strategyVisionState.style.color = "var(--text-muted)";
+      } else if (status !== "RUNNING") {
+        strategyVisionState.innerText = "待啟動";
+        strategyVisionState.style.color = "var(--text-muted)";
+      } else if (data.vision_available) {
+        strategyVisionState.innerText = "🟢 正常接收 (/live/stream)";
+        strategyVisionState.style.color = "#10b981";
+      } else {
+        strategyVisionState.innerText = "🟡 連線串流中 / 無畫面";
+        strategyVisionState.style.color = "#f59e0b";
+      }
+
+      // 渲染 16 步驟進度卡片 (點擊步驟可快速指定為起始步驟)
+      if (steps.length > 0) {
+        strategyStepsGrid.innerHTML = "";
+        const startStep = data.start_step || 1;
+        steps.forEach(s => {
+          const item = document.createElement('div');
+          item.className = 'strategy-step-item';
+          let icon = "⬜";
+
+          if (status === "COMPLETED") {
+            if (s.index >= startStep) {
+              item.classList.add('done');
+              icon = "✅";
+            }
+          } else if (status === "RUNNING") {
+            if (s.index >= startStep && s.index < curStep) {
+              item.classList.add('done');
+              icon = "✅";
+            } else if (s.index === curStep) {
+              item.classList.add('active');
+              icon = "🔄";
+            }
+          } else if (status === "STOPPED" || status === "ERROR") {
+            if (s.index >= startStep && s.index < curStep) {
+              item.classList.add('done');
+              icon = "✅";
+            } else if (s.index === curStep) {
+              item.classList.add('stopped');
+              icon = "⏹";
+            }
+          }
+
+          item.innerHTML = `
+            <div class="strategy-step-head">
+              <span>${icon} ${s.index}. ${escapeHtml(s.title)}</span>
+            </div>
+            <div class="strategy-step-desc">${escapeHtml(s.description)}</div>
+          `;
+          item.title = "點擊將此步驟設為「起始步驟」";
+          item.addEventListener('click', () => {
+            if (currentStrategyStatus !== "RUNNING") {
+              strategyStartStepSelect.value = String(s.index);
+              addLog("SYS", `已選擇從第 ${s.index} 步開始執行：${s.title}`);
+            }
+          });
+          strategyStepsGrid.appendChild(item);
+        });
+      }
     }
 
     // ============================================================

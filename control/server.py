@@ -7,13 +7,21 @@ Mechatronics-4 機器人車輛 Web 控制伺服器
 
 import asyncio
 import os
+import sys
 from contextlib import asynccontextmanager
 from typing import Optional, Set
+
+# 確保不論從專案根目錄或 control/ 目錄啟動都能匯入 strategies 與 control 模組
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+
+from strategies.runner import StrategyRunner
 
 try:
     from control.robot_controller import (
@@ -103,16 +111,18 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# ==================== 控制器實例掛載 ====================
+# ==================== 控制器實例與策略引擎掛載 ====================
 bridge: RobotController = RobotController()
+strategy_runner: StrategyRunner = StrategyRunner(bridge)
 _owns_controller: bool = True
 _event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 def attach_controller(ext_controller: RobotController):
     """掛載外部建立的 RobotController 實例，讓自動任務與 Web 除錯面板共用同一序列埠連線"""
-    global bridge, _owns_controller
+    global bridge, strategy_runner, _owns_controller
     bridge = ext_controller
+    strategy_runner = StrategyRunner(bridge)
     _owns_controller = False
 
 
@@ -130,6 +140,7 @@ async def lifespan(app: FastAPI):
     bridge.add_listener(_on_controller_event)
     print("-> Web 伺服器已就緒，請在瀏覽器開啟: http://localhost:8000")
     yield
+    strategy_runner.stop()
     bridge.remove_listener(_on_controller_event)
     if _owns_controller:
         bridge.disconnect()
@@ -202,6 +213,35 @@ class RelayRequest(BaseModel):
 class DualMotorRequest(BaseModel):
     turn: int = 0
     speed: int = 0
+
+
+class StrategyStartRequest(BaseModel):
+    start_step: int = 1
+    enable_vision: bool = True
+    rtsp_url: str = "rtsp://localhost:8554/live/stream"
+    reset_imu: bool = False
+
+
+@app.get("/api/strategy/status")
+async def api_strategy_status():
+    return strategy_runner.get_status()
+
+
+@app.post("/api/strategy/start")
+async def api_strategy_start(req: StrategyStartRequest):
+    ok, msg = strategy_runner.start(
+        start_step=req.start_step,
+        enable_vision=req.enable_vision,
+        rtsp_url=req.rtsp_url,
+        reset_imu=req.reset_imu,
+    )
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
+
+
+@app.post("/api/strategy/stop")
+async def api_strategy_stop():
+    ok, msg = strategy_runner.stop()
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
 
 
 @app.post("/api/turn_speed")
@@ -286,6 +326,7 @@ async def api_connect(req: ConnectRequest):
 
 @app.post("/api/disconnect")
 async def api_disconnect():
+    strategy_runner.stop()
     bridge.disconnect()
     return {"success": True}
 
@@ -330,6 +371,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # 連線初始狀態推播
     for init_msg in bridge.get_initial_messages():
         await websocket.send_json(init_msg)
+    await websocket.send_json(strategy_runner.get_status())
 
     try:
         while True:
@@ -409,7 +451,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     bridge.connect(port, baud)
 
             elif action == "disconnect":
+                strategy_runner.stop()
                 bridge.disconnect()
+
+            elif action == "strategy_start":
+                start_step = int(data.get("start_step", 1))
+                enable_vision = bool(data.get("enable_vision", True))
+                rtsp_url = str(data.get("rtsp_url", "rtsp://localhost:8554/live/stream"))
+                reset_imu = bool(data.get("reset_imu", False))
+                ok, _ = strategy_runner.start(
+                    start_step=start_step,
+                    enable_vision=enable_vision,
+                    rtsp_url=rtsp_url,
+                    reset_imu=reset_imu,
+                )
+                if not ok:
+                    await websocket.send_json(strategy_runner.get_status())
+
+            elif action == "strategy_stop":
+                strategy_runner.stop()
+
+            elif action == "get_strategy_status":
+                await websocket.send_json(strategy_runner.get_status())
 
             elif action == "reconnect":
                 port = data.get("port", "") or bridge.port

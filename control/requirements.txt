@@ -14,3 +14,7 @@ pydantic>=2.0.0
 # Arduino 序列埠通訊 (COM port / UART)
 pyserial>=3.5
 
+# 影像辨識與策略視覺處理 (frame_recognize / strategies)
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
