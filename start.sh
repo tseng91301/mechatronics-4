@@ -9,4 +9,4 @@ cd ~/mechatronics-4/records && ffmpeg -y -f v4l2 -video_size 640x360 -framerate 
   -map 0:v -c:v libx264 -preset ultrafast -tune zerolatency -g 20 -bf 0 -b:v 800k -maxrate 800k -bufsize 400k -pix_fmt yuv420p -f mp4 output.mp4 &
 
 # New Terminal
-cd ~/mechatronics-4/control && venv/bin/python -m uvicorn server:app --host 0.0.0.0 --port 8000 --reload &
+cd ~/mechatronics-4 && venv/bin/python -m uvicorn control.server:app --host 0.0.0.0 --port 8000 --reload &
