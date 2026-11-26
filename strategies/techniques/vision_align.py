@@ -9,7 +9,7 @@ import os
 import sys
 import threading
 import time
-from typing import Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 from .context import StrategyContext, clamp, wrap_angle_deg
 
@@ -42,10 +42,12 @@ class VisionSource:
         source: Union[str, int] = "rtsp://localhost:8554/live/stream",
         roi_top_ratio: float = 0.15,
         detect_fps: float = 12.0,
+        frame_provider: Optional[Callable[[], Tuple[Optional[Any], float]]] = None,
     ):
         self.source = source
         self.roi_top_ratio = roi_top_ratio
         self.detect_interval = 1.0 / max(1.0, detect_fps)
+        self.frame_provider = frame_provider
 
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -68,7 +70,7 @@ class VisionSource:
     def is_available(self) -> bool:
         """是否已成功連線並持續收到有效影格"""
         with self._lock:
-            return self._available and (time.monotonic() - self._latest_frame_time < 2.5)
+            return self._available and (time.monotonic() - self._latest_frame_time < 3.0)
 
     def start(self) -> bool:
         if not self.is_supported():
@@ -95,7 +97,38 @@ class VisionSource:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
+    def _run_detection_on_frame(self, frame, frame_time: float):
+        with self._lock:
+            self._latest_frame = frame
+            self._latest_frame_time = frame_time
+            self._available = True
+
+        now = time.monotonic()
+        if self._detector is not None and (now - self._last_detect_time) >= self.detect_interval:
+            try:
+                has_confetti, bbox, center = self._detector.detect(frame)
+                with self._lock:
+                    self._latest_result = (bool(has_confetti), bbox, center)
+                    self._last_detect_time = now
+            except Exception:
+                pass
+
     def _capture_loop(self):
+        if self.frame_provider is not None:
+            while self._running:
+                try:
+                    frame, frame_ts = self.frame_provider()
+                    if frame is not None and (time.monotonic() - frame_ts) < 3.0:
+                        self._run_detection_on_frame(frame, frame_ts)
+                    else:
+                        with self._lock:
+                            self._available = False
+                except Exception:
+                    with self._lock:
+                        self._available = False
+                time.sleep(0.05)
+            return
+
         cap = None
         while self._running:
             if cap is None or not cap.isOpened():
@@ -123,21 +156,7 @@ class VisionSource:
                 time.sleep(0.5)
                 continue
 
-            now = time.monotonic()
-            with self._lock:
-                self._latest_frame = frame
-                self._latest_frame_time = now
-                self._available = True
-
-            # 以限頻節奏在背景直接跑好輕量化偵測，策略讀取時零等待
-            if self._detector is not None and (now - self._last_detect_time) >= self.detect_interval:
-                try:
-                    has_confetti, bbox, center = self._detector.detect(frame)
-                    with self._lock:
-                        self._latest_result = (bool(has_confetti), bbox, center)
-                        self._last_detect_time = now
-                except Exception:
-                    pass
+            self._run_detection_on_frame(frame, time.monotonic())
 
         if cap is not None:
             cap.release()
@@ -145,12 +164,12 @@ class VisionSource:
     def detect_latest(self) -> Tuple[bool, Optional["ConfettiBBox"], Optional["ConfettiCenter"]]:
         """
         取得最新影像偵測結果: (has_confetti, bbox, center)。
-        若影像不可用或過期 (>2.5s)，回傳 (False, None, None)。
+        若影像不可用或過期 (>3.0s)，回傳 (False, None, None)。
         """
         if not self.is_supported():
             return (False, None, None)
         with self._lock:
-            if not self._available or (time.monotonic() - self._latest_frame_time > 2.5):
+            if not self._available or (time.monotonic() - self._latest_frame_time > 3.0):
                 return (False, None, None)
             return self._latest_result
 

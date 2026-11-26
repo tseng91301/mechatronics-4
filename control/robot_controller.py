@@ -73,9 +73,21 @@ class RobotController:
         self.expected_len = 0
         self.rx_buffer = bytearray()
 
-        # 虛擬模擬模式
+        # 虛擬模擬模式與模擬資料注入狀態
         self.mock_mode: bool = False
         self.mock_thread: Optional[threading.Thread] = None
+        self._injected_frame = None
+        self._injected_frame_time: float = 0.0
+        self._sim_config: Dict[str, object] = {
+            "auto_kinematics": True,
+            "auto_wave": False,
+            "turn_speed": 90,
+            "mock_target_yaw": 0.0,
+            "mock_target_speed": 0,
+            "mock_manual_turn": 0,
+            "mock_sweep_amp": 20.0,
+            "mock_sweep_period_ms": 2000,
+        }
 
         # 主動巡航心跳線程 (避免自主導航時因超過 1000ms 觸發 Arduino 失聯安全煞停)
         self.active_heading: Optional[tuple] = None
@@ -263,8 +275,21 @@ class RobotController:
         return self.connect(port, baud)
 
     def start_mock(self):
-        """啟動虛擬模擬模式 (無實體硬體時可用於測試)"""
+        """啟動虛擬模擬模式 (無實體硬體時可用於測試與 /sim 資料注入)"""
         self.disconnect()
+        with self._state_lock:
+            if int(self.latest_data["front_mm"]) < 0:
+                self.latest_data["front_mm"] = 2000
+                self.latest_data["front_cm"] = 200.0
+            if int(self.latest_data["right_mm"]) < 0:
+                self.latest_data["right_mm"] = 150
+                self.latest_data["right_cm"] = 15.0
+            self.latest_data["e_stop_triggered"] = False
+            self.latest_data["e_stop_reason"] = ""
+            self._sim_config["mock_target_yaw"] = float(self.latest_data["yaw"])
+            self._sim_config["mock_target_speed"] = 0
+            self._sim_config["mock_manual_turn"] = 0
+
         self.mock_mode = True
         self.is_connected = True
         self.mock_thread = threading.Thread(target=self._mock_worker, daemon=True)
@@ -278,6 +303,7 @@ class RobotController:
             "port": "MOCK_PORT",
             "baudrate": 9600,
         })
+        self.notify(self.get_sim_state())
 
     def stop_mock(self):
         """停止虛擬模擬模式"""
@@ -453,6 +479,12 @@ class RobotController:
                 self.active_heading = None
             elif speed != 0 or turn != 0:
                 self.latest_data["e_stop_triggered"] = False
+            if self.mock_mode:
+                self._sim_config["mock_target_speed"] = speed
+                self._sim_config["mock_manual_turn"] = turn
+                is_sweep = bool(self.latest_data["sweep_enabled"])
+                self.latest_data["mode"] = 0x02 if is_sweep else 0x00
+                self.latest_data["mode_name"] = "MANUAL+SWEEP" if is_sweep else "MANUAL"
 
         is_repeat = self._last_drive == (turn, speed)
         quiet = is_heartbeat or is_repeat
@@ -497,6 +529,7 @@ class RobotController:
         """重設 IMU Yaw 朝向歸零"""
         with self._state_lock:
             self.latest_data["yaw"] = 0.0
+            self._sim_config["mock_target_yaw"] = 0.0
         self.send_packet(CMD_RESET_IMU_YAW, b'', "重設 IMU 朝向歸零 (Yaw = 0°)")
         imu_state = self.get_imu()
         self.notify({
@@ -521,6 +554,13 @@ class RobotController:
                 self.active_heading = (target_yaw, speed)
             else:
                 self.active_heading = None
+            if self.mock_mode:
+                self._sim_config["mock_target_yaw"] = float(target_yaw)
+                self._sim_config["mock_target_speed"] = speed
+                self._sim_config["mock_manual_turn"] = 0
+                is_sweep = bool(self.latest_data["sweep_enabled"])
+                self.latest_data["mode"] = 0x01 | (0x02 if is_sweep else 0x00)
+                self.latest_data["mode_name"] = "HEADING+SWEEP" if is_sweep else "HEADING"
 
         self.send_packet(CMD_SET_HEADING, payload, desc, quiet=quiet)
 
@@ -531,12 +571,27 @@ class RobotController:
         period_ms = max(500, min(65535, int(period_ms)))
         payload = struct.pack('>BhH', en_val, amp_x10, period_ms)
         desc = f"動態擺頭模式: {'開啟 ON' if enable else '關閉 OFF'} (幅度=±{amp:.1f}°, 週期={period_ms}ms)"
+        with self._state_lock:
+            if self.mock_mode:
+                self.latest_data["sweep_enabled"] = bool(enable)
+                self._sim_config["mock_sweep_amp"] = float(amp)
+                self._sim_config["mock_sweep_period_ms"] = int(period_ms)
+                is_heading = bool(int(self.latest_data["mode"]) & 0x01)
+                self.latest_data["mode"] = (0x01 if is_heading else 0x00) | (0x02 if enable else 0x00)
+                base_mode = "HEADING" if is_heading else "MANUAL"
+                self.latest_data["mode_name"] = f"{base_mode}+SWEEP" if enable else base_mode
         self.send_packet(CMD_SET_SWEEP, payload, desc)
 
     def send_stop_motion(self):
         """煞停並停止任何航向/擺頭運動 (0x08)"""
         with self._state_lock:
             self.active_heading = None
+            if self.mock_mode:
+                self._sim_config["mock_target_speed"] = 0
+                self._sim_config["mock_manual_turn"] = 0
+                self.latest_data["sweep_enabled"] = False
+                self.latest_data["mode"] = 0
+                self.latest_data["mode_name"] = "MANUAL"
         desc = "停止運動並解除航向/擺頭鎖定 (0x08)"
         self.send_packet(CMD_STOP_MOTION, b'', desc)
 
@@ -546,17 +601,38 @@ class RobotController:
         payload = struct.pack('>H', threshold_mm)
         desc = f"設定防撞安全門檻: {threshold_mm} mm ({threshold_mm/10.0:.1f} cm)"
         self.send_packet(CMD_SET_SAFETY_THRESH, payload, desc)
+        if self.mock_mode:
+            thresh_cm = round(threshold_mm / 10.0, 1)
+            with self._state_lock:
+                self.latest_data["safety_threshold_mm"] = threshold_mm
+                self.latest_data["safety_threshold_cm"] = thresh_cm
+            self.notify({
+                "type": "safety_threshold",
+                "threshold_mm": threshold_mm,
+                "threshold_cm": thresh_cm,
+            })
 
     def send_get_safety_threshold(self):
         """查詢超音波防撞門檻 (0x0A)"""
         desc = "查詢防撞安全門檻 (0x0A)"
         self.send_packet(CMD_GET_SAFETY_THRESH, b'', desc)
+        if self.mock_mode:
+            with self._state_lock:
+                thresh_mm = int(self.latest_data["safety_threshold_mm"])
+                thresh_cm = float(self.latest_data["safety_threshold_cm"])
+            self.notify({
+                "type": "safety_threshold",
+                "threshold_mm": thresh_mm,
+                "threshold_cm": thresh_cm,
+            })
 
     def send_set_turn_speed(self, turn_speed: int):
         """設定原地旋轉對齊速度上限 (0x0B): turn_speed (int16, 40~220)"""
         turn_speed = max(40, min(220, int(turn_speed)))
         payload = struct.pack('>h', turn_speed)
         desc = f"設定旋轉轉速上限: {turn_speed} PWM"
+        with self._state_lock:
+            self._sim_config["turn_speed"] = turn_speed
         self.send_packet(CMD_SET_TURN_SPEED, payload, desc)
 
     # ------------------ 語意化高階別名 (方便策略腳本呼叫) ------------------
@@ -766,44 +842,198 @@ class RobotController:
         else:
             self.log("RX", f"收到未註冊指令 0x{cmd:02X}", hex_str)
 
+    # ------------------ 模擬資料注入 API (供 /sim 網頁或測試腳本呼叫) ------------------
+    def inject_ultrasonic(self, front_mm: Optional[int] = None, right_mm: Optional[int] = None):
+        """手動注入模擬模式的前方/右方超音波距離 (mm，-1 代表超出範圍)"""
+        with self._state_lock:
+            if front_mm is not None:
+                f_val = int(front_mm)
+                self.latest_data["front_mm"] = f_val
+                self.latest_data["front_cm"] = round(f_val / 10.0, 1) if f_val >= 0 else -1.0
+            if right_mm is not None:
+                r_val = int(right_mm)
+                self.latest_data["right_mm"] = r_val
+                self.latest_data["right_cm"] = round(r_val / 10.0, 1) if r_val >= 0 else -1.0
+            self.latest_data["last_updated"] = time.time()
+        self._notify_ultrasonic()
+
+    def inject_imu(
+        self,
+        yaw: Optional[float] = None,
+        pitch: Optional[float] = None,
+        roll: Optional[float] = None,
+    ):
+        """手動注入模擬模式的 IMU 姿態角度 (度)"""
+        with self._state_lock:
+            if yaw is not None:
+                y = ((float(yaw) + 180.0) % 360.0) - 180.0
+                self.latest_data["yaw"] = round(y, 1)
+            if pitch is not None:
+                self.latest_data["pitch"] = round(float(pitch), 1)
+            if roll is not None:
+                self.latest_data["roll"] = round(float(roll), 1)
+            self.latest_data["last_updated"] = time.time()
+            imu_msg = {
+                "type": "imu",
+                "yaw": self.latest_data["yaw"],
+                "pitch": self.latest_data["pitch"],
+                "roll": self.latest_data["roll"],
+                "mode": self.latest_data["mode"],
+                "mode_name": self.latest_data["mode_name"],
+                "sweep_enabled": self.latest_data["sweep_enabled"],
+                "auto_correct": self.latest_data["auto_correct"],
+            }
+        self.notify(imu_msg)
+
+    def set_sim_options(
+        self,
+        auto_kinematics: Optional[bool] = None,
+        auto_wave: Optional[bool] = None,
+    ):
+        """設定模擬模式行為選項 (auto_kinematics: 自動轉向收斂, auto_wave: 亂數波形)"""
+        with self._state_lock:
+            if auto_kinematics is not None:
+                self._sim_config["auto_kinematics"] = bool(auto_kinematics)
+            if auto_wave is not None:
+                self._sim_config["auto_wave"] = bool(auto_wave)
+        self.notify(self.get_sim_state())
+
+    def inject_camera_frame(self, frame):
+        """注入模擬攝影機 BGR 影格 (供 VisionSource 在 Mock Mode 下讀取)"""
+        with self._state_lock:
+            self._injected_frame = frame
+            self._injected_frame_time = time.monotonic()
+
+    def get_injected_frame(self):
+        """取得最新注入的模擬影格與時間戳 (frame, monotonic_ts)"""
+        with self._state_lock:
+            return (self._injected_frame, self._injected_frame_time)
+
+    def get_sim_state(self) -> dict:
+        """取得完整模擬器狀態 (包含感測器、模擬設定與目前馬達輸出目標)"""
+        with self._state_lock:
+            return {
+                "type": "sim_state",
+                "mock_mode": self.mock_mode,
+                "connected": self.is_connected,
+                "front_mm": self.latest_data["front_mm"],
+                "front_cm": self.latest_data["front_cm"],
+                "right_mm": self.latest_data["right_mm"],
+                "right_cm": self.latest_data["right_cm"],
+                "yaw": self.latest_data["yaw"],
+                "pitch": self.latest_data["pitch"],
+                "roll": self.latest_data["roll"],
+                "mode": self.latest_data["mode"],
+                "mode_name": self.latest_data["mode_name"],
+                "sweep_enabled": self.latest_data["sweep_enabled"],
+                "relay_state": self.latest_data["relay_state"],
+                "safety_threshold_mm": self.latest_data["safety_threshold_mm"],
+                "e_stop_triggered": self.latest_data["e_stop_triggered"],
+                "auto_kinematics": self._sim_config["auto_kinematics"],
+                "auto_wave": self._sim_config["auto_wave"],
+                "turn_speed": self._sim_config["turn_speed"],
+                "target_yaw": self._sim_config["mock_target_yaw"],
+                "target_speed": self._sim_config["mock_target_speed"],
+                "manual_turn": self._sim_config["mock_manual_turn"],
+                "sweep_amp": self._sim_config["mock_sweep_amp"],
+                "sweep_period_ms": self._sim_config["mock_sweep_period_ms"],
+                "has_camera_frame": (
+                    self._injected_frame is not None
+                    and (time.monotonic() - self._injected_frame_time < 3.0)
+                ),
+            }
+
     # ------------------ 模擬執行緒 ------------------
     def _mock_worker(self):
         t = 0.0
+        dt = 0.1
         while self.mock_mode and self.is_connected:
-            t += 0.2
-            f_dist = int(350 + 120 * math.sin(t * 0.7) + random.uniform(-10, 10))
-            r_dist = int(220 + 80 * math.cos(t * 0.5) + random.uniform(-8, 8))
-            f_dist = max(50, min(2000, f_dist))
-            r_dist = max(50, min(1500, r_dist))
+            t += dt
+            estop_reason = None
 
             with self._state_lock:
-                self.latest_data["front_mm"] = f_dist
-                self.latest_data["front_cm"] = round(f_dist / 10.0, 1)
-                self.latest_data["right_mm"] = r_dist
-                self.latest_data["right_cm"] = round(r_dist / 10.0, 1)
+                auto_wave = bool(self._sim_config["auto_wave"])
+                auto_kin = bool(self._sim_config["auto_kinematics"])
 
-                yaw = round((float(self.latest_data["yaw"]) + random.uniform(-0.15, 0.15)) % 360, 1)
-                if yaw > 180:
-                    yaw -= 360
-                self.latest_data["yaw"] = yaw
+                if auto_wave:
+                    f_dist = int(350 + 120 * math.sin(t * 0.7) + random.uniform(-10, 10))
+                    r_dist = int(220 + 80 * math.cos(t * 0.5) + random.uniform(-8, 8))
+                    f_dist = max(50, min(2000, f_dist))
+                    r_dist = max(50, min(1500, r_dist))
+                    self.latest_data["front_mm"] = f_dist
+                    self.latest_data["front_cm"] = round(f_dist / 10.0, 1)
+                    self.latest_data["right_mm"] = r_dist
+                    self.latest_data["right_cm"] = round(r_dist / 10.0, 1)
+
+                # 若啟用運動學模擬，依指令平滑更新 Yaw
+                yaw = float(self.latest_data["yaw"])
+                mode_bits = int(self.latest_data["mode"])
+                target_speed = int(self._sim_config["mock_target_speed"])
+                turn_spd = int(self._sim_config["turn_speed"])
+
+                if auto_kin:
+                    if mode_bits & 0x01:
+                        # HEADING 模式：平滑轉向至 mock_target_yaw (+ 可選擺頭微擺)
+                        tgt = float(self._sim_config["mock_target_yaw"])
+                        if mode_bits & 0x02:
+                            amp = float(self._sim_config["mock_sweep_amp"])
+                            period_s = max(0.5, float(self._sim_config["mock_sweep_period_ms"]) / 1000.0)
+                            tgt += amp * math.sin(2.0 * math.pi * t / period_s)
+                        err = ((tgt - yaw + 180.0) % 360.0) - 180.0
+                        max_step = max(3.0, (turn_spd * 1.2) * dt)
+                        if abs(err) <= max_step:
+                            yaw = tgt
+                        else:
+                            yaw += max_step if err > 0 else -max_step
+                    else:
+                        manual_turn = int(self._sim_config["mock_manual_turn"])
+                        if manual_turn != 0:
+                            # 左轉 (+turn) 為 -Yaw，右轉 (-turn) 為 +Yaw
+                            yaw -= (manual_turn / 255.0) * (turn_spd * 1.2) * dt
+
+                    yaw = ((yaw + 180.0) % 360.0) - 180.0
+                    self.latest_data["yaw"] = round(yaw, 1)
+
+                # 模擬 Arduino 硬體極限防撞 E-Stop 保護
+                thresh_mm = int(self.latest_data["safety_threshold_mm"])
+                f_mm = int(self.latest_data["front_mm"])
+                if thresh_mm > 0 and f_mm > 0 and f_mm < thresh_mm and target_speed > 0:
+                    self.active_heading = None
+                    self._sim_config["mock_target_speed"] = 0
+                    self._sim_config["mock_manual_turn"] = 0
+                    self.latest_data["sweep_enabled"] = False
+                    self.latest_data["mode"] = 0
+                    self.latest_data["mode_name"] = "MANUAL"
+                    self.latest_data["e_stop_triggered"] = True
+                    estop_reason = f"[MOCK] Front obstacle ({f_mm}mm) < {thresh_mm}mm! E-Stop"
+                    self.latest_data["e_stop_reason"] = estop_reason
+
                 self.latest_data["last_updated"] = time.time()
 
-                front_cm = self.latest_data["front_cm"]
-                right_cm = self.latest_data["right_cm"]
-                auto_correct = self.latest_data["auto_correct"]
+                us_msg = {
+                    "type": "ultrasonic",
+                    "front_mm": self.latest_data["front_mm"],
+                    "front_cm": self.latest_data["front_cm"],
+                    "right_mm": self.latest_data["right_mm"],
+                    "right_cm": self.latest_data["right_cm"],
+                }
+                imu_msg = {
+                    "type": "imu",
+                    "yaw": self.latest_data["yaw"],
+                    "pitch": self.latest_data["pitch"],
+                    "roll": self.latest_data["roll"],
+                    "mode": self.latest_data["mode"],
+                    "mode_name": self.latest_data["mode_name"],
+                    "sweep_enabled": self.latest_data["sweep_enabled"],
+                    "auto_correct": self.latest_data["auto_correct"],
+                }
 
-            self.notify({
-                "type": "ultrasonic",
-                "front_mm": f_dist,
-                "front_cm": front_cm,
-                "right_mm": r_dist,
-                "right_cm": right_cm,
-            })
-            self.notify({
-                "type": "imu",
-                "yaw": yaw,
-                "pitch": round(1.2 * math.sin(t * 0.4), 1),
-                "roll": round(0.8 * math.cos(t * 0.3), 1),
-                "auto_correct": auto_correct,
-            })
-            time.sleep(0.2)
+            self.notify(us_msg)
+            self.notify(imu_msg)
+            self.notify(self.get_sim_state())
+
+            if estop_reason:
+                self.log("RX", f"Arduino 訊息: {estop_reason}")
+                self.notify({"type": "e_stop", "reason": estop_reason})
+
+            time.sleep(dt)

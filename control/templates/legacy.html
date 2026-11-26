@@ -1611,34 +1611,35 @@
             <button id="pingBtn" class="btn" style="font-size:0.75rem; padding:0.25rem 0.5rem;">📶 Ping 測試</button>
           </div>
           <div class="radar-visual-container">
-            <svg id="carRadarSvg" width="280" height="230" viewBox="0 0 280 230">
-              <circle cx="120" cy="130" r="40" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
-              <circle cx="120" cy="130" r="80" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+            <svg id="carRadarSvg" width="270" height="270" viewBox="0 0 320 320">
+              <circle cx="160" cy="160" r="65" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+              <circle cx="160" cy="160" r="115" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
 
-              <polygon id="frontBeam" points="100,70 140,70 155,20 85,20" fill="rgba(56, 189, 248, 0.25)"
-                stroke="#38bdf8" stroke-width="1.5" />
-              <line id="frontBeamLine" x1="120" y1="70" x2="120" y2="20" stroke="#38bdf8" stroke-width="2"
-                stroke-dasharray="2 2" />
-              <text id="frontBeamText" x="120" y="15" fill="#38bdf8" font-size="11" text-anchor="middle"
-                font-family="monospace">-- cm</text>
+              <g id="radarCarRotator" transform="rotate(0 160 160)">
+                <polygon id="frontBeam" points="144,114 176,114 185,62 135,62" fill="rgba(56, 189, 248, 0.25)"
+                  stroke="#38bdf8" stroke-width="1.5" />
+                <line id="frontBeamLine" x1="160" y1="114" x2="160" y2="62" stroke="#38bdf8" stroke-width="2"
+                  stroke-dasharray="2 2" />
 
-              <polygon id="rightBeam" points="160,110 160,150 240,165 240,95" fill="rgba(168, 85, 247, 0.25)"
-                stroke="#a855f7" stroke-width="1.5" />
-              <line id="rightBeamLine" x1="160" y1="130" x2="240" y2="130" stroke="#a855f7" stroke-width="2"
-                stroke-dasharray="2 2" />
-              <text id="rightBeamText" x="250" y="134" fill="#a855f7" font-size="11" text-anchor="start"
-                font-family="monospace">-- cm</text>
+                <polygon id="rightBeam" points="192,142 192,178 244,186 244,134" fill="rgba(168, 85, 247, 0.25)"
+                  stroke="#a855f7" stroke-width="1.5" />
+                <line id="rightBeamLine" x1="192" y1="160" x2="244" y2="160" stroke="#a855f7" stroke-width="2"
+                  stroke-dasharray="2 2" />
 
-              <g id="radarCarRotator" transform="rotate(0 120 130)">
-                <rect x="80" y="70" width="80" height="120" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2" />
-                <rect x="90" y="80" width="60" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
-                <rect x="68" y="85" width="10" height="30" rx="3" fill="#64748b" />
-                <rect x="162" y="85" width="10" height="30" rx="3" fill="#64748b" />
-                <rect x="68" y="145" width="10" height="30" rx="3" fill="#64748b" />
-                <rect x="162" y="145" width="10" height="30" rx="3" fill="#64748b" />
-                <polygon points="120,85 110,100 130,100" fill="#38bdf8" />
-                <text x="120" y="145" fill="#94a3b8" font-size="10" text-anchor="middle">ROBOT</text>
+                <rect x="128" y="114" width="64" height="92" rx="12" fill="#1e293b" stroke="#475569" stroke-width="2" />
+                <rect x="136" y="122" width="48" height="32" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1" />
+                <rect x="118" y="126" width="8" height="24" rx="2" fill="#64748b" />
+                <rect x="194" y="126" width="8" height="24" rx="2" fill="#64748b" />
+                <rect x="118" y="170" width="8" height="24" rx="2" fill="#64748b" />
+                <rect x="194" y="170" width="8" height="24" rx="2" fill="#64748b" />
+                <polygon points="160,126 152,139 168,139" fill="#38bdf8" />
+                <text x="160" y="176" fill="#94a3b8" font-size="10" text-anchor="middle">ROBOT</text>
               </g>
+
+              <text id="frontBeamText" x="160" y="47" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle"
+                dominant-baseline="central" font-family="monospace">-- cm</text>
+              <text id="rightBeamText" x="268" y="160" fill="#a855f7" font-size="11" font-weight="700" text-anchor="middle"
+                dominant-baseline="central" font-family="monospace">-- cm</text>
             </svg>
           </div>
         </div>
@@ -2231,15 +2232,20 @@
     // ==============================================
     // 超音波數據儀表與雷達更新
     // ==============================================
+    let lastFrontCm = -1;
+    let lastRightCm = -1;
+
     function updateUltrasonic(data) {
       // 1. 前方超音波
       const f_mm = data.front_mm;
       const f_cm = data.front_cm;
+      if (f_cm !== undefined) lastFrontCm = f_cm;
       renderSensorUi(f_mm, f_cm, frontCm, frontMm, frontProgress, frontStatus, "front");
 
       // 2. 右方超音波
       const r_mm = data.right_mm;
       const r_cm = data.right_cm;
+      if (r_cm !== undefined) lastRightCm = r_cm;
       renderSensorUi(r_mm, r_cm, rightCm, rightMm, rightProgress, rightStatus, "right");
 
       // 3. 更新 SVG 戰術雷達圖
@@ -2296,12 +2302,20 @@
     }
 
     function renderRadarSvg(f_cm, r_cm) {
-      if (f_cm > 0 && f_cm <= 150) {
-        const visualDist = Math.max(15, (f_cm / 150) * 55);
-        const tipY = 70 - visualDist;
-        frontBeam.setAttribute("points", `105,70 135,70 ${120 + visualDist * 0.4},${tipY} ${120 - visualDist * 0.4},${tipY}`);
+      const cx = 160;
+      const cy = 160;
+      const rad = (currentYaw * Math.PI) / 180.0;
+      const fx = Math.sin(rad);
+      const fy = -Math.cos(rad);
+      const rx = Math.cos(rad);
+      const ry = Math.sin(rad);
+
+      let fVisualDist = 52;
+      if (f_cm !== undefined && f_cm > 0 && f_cm <= 150) {
+        fVisualDist = Math.max(18, (f_cm / 150.0) * 65);
+        const tipY = 114 - fVisualDist;
+        frontBeam.setAttribute("points", `144,114 176,114 ${160 + fVisualDist * 0.35},${tipY} ${160 - fVisualDist * 0.35},${tipY}`);
         frontBeamLine.setAttribute("y2", tipY);
-        frontBeamText.setAttribute("y", Math.max(12, tipY - 5));
         frontBeamText.textContent = `${f_cm.toFixed(1)} cm`;
 
         const color = getDistanceColor(f_cm, "#38bdf8");
@@ -2310,17 +2324,20 @@
         frontBeamLine.setAttribute("stroke", color);
         frontBeamText.setAttribute("fill", color);
       } else {
-        frontBeam.setAttribute("points", "105,70 135,70 145,20 95,20");
-        frontBeamLine.setAttribute("y2", "20");
-        frontBeamText.textContent = f_cm < 0 ? "超出範圍" : `${f_cm.toFixed(1)} cm`;
+        frontBeam.setAttribute("points", "144,114 176,114 185,62 135,62");
+        frontBeamLine.setAttribute("y2", "62");
+        frontBeamText.textContent = (f_cm !== undefined && f_cm >= 0) ? `${f_cm.toFixed(1)} cm` : "超出範圍";
       }
+      const fLabelR = 46 + fVisualDist + 16;
+      frontBeamText.setAttribute("x", (cx + fx * fLabelR).toFixed(1));
+      frontBeamText.setAttribute("y", (cy + fy * fLabelR).toFixed(1));
 
-      if (r_cm > 0 && r_cm <= 150) {
-        const visualDist = Math.max(15, (r_cm / 150) * 80);
-        const tipX = 160 + visualDist;
-        rightBeam.setAttribute("points", `160,115 160,145 ${tipX},${130 + visualDist * 0.3} ${tipX},${130 - visualDist * 0.3}`);
+      let rVisualDist = 52;
+      if (r_cm !== undefined && r_cm > 0 && r_cm <= 150) {
+        rVisualDist = Math.max(18, (r_cm / 150.0) * 65);
+        const tipX = 192 + rVisualDist;
+        rightBeam.setAttribute("points", `192,142 192,178 ${tipX},${160 + rVisualDist * 0.32} ${tipX},${160 - rVisualDist * 0.32}`);
         rightBeamLine.setAttribute("x2", tipX);
-        rightBeamText.setAttribute("x", Math.min(270, tipX + 6));
         rightBeamText.textContent = `${r_cm.toFixed(1)} cm`;
 
         const color = getDistanceColor(r_cm, "#a855f7");
@@ -2329,13 +2346,16 @@
         rightBeamLine.setAttribute("stroke", color);
         rightBeamText.setAttribute("fill", color);
       } else {
-        rightBeam.setAttribute("points", "160,115 160,145 240,160 240,100");
-        rightBeamLine.setAttribute("x2", "240");
-        rightBeamText.textContent = r_cm < 0 ? "超出範圍" : `${r_cm.toFixed(1)} cm`;
+        rightBeam.setAttribute("points", "192,142 192,178 244,186 244,134");
+        rightBeamLine.setAttribute("x2", "244");
+        rightBeamText.textContent = (r_cm !== undefined && r_cm >= 0) ? `${r_cm.toFixed(1)} cm` : "超出範圍";
       }
+      const rLabelR = 32 + rVisualDist + 24;
+      rightBeamText.setAttribute("x", (cx + rx * rLabelR).toFixed(1));
+      rightBeamText.setAttribute("y", (cy + ry * rLabelR).toFixed(1));
 
       if (radarCarRotator) {
-        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 120 130)`);
+        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 160 160)`);
       }
     }
 
@@ -2372,10 +2392,8 @@
         compassNeedle.setAttribute("transform", `rotate(${-currentYaw.toFixed(1)} 80 80)`);
       }
 
-      // 車輛雷達車體旋轉
-      if (radarCarRotator) {
-        radarCarRotator.setAttribute("transform", `rotate(${currentYaw.toFixed(1)} 120 130)`);
-      }
+      // 車輛雷達車體與波束同步旋轉
+      renderRadarSvg(lastFrontCm, lastRightCm);
 
       // 2. 無人機手把模式 HUD 更新
       if (droneHudYawText) droneHudYawText.innerText = currentYaw.toFixed(1) + '°';

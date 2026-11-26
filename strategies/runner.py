@@ -26,10 +26,12 @@ class StrategyRunner:
         self._steps: List[StrategyStep] = steps if steps is not None else build_arena_strategy()
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
+        self._next_step_event = threading.Event()
+        self._step_mode: bool = False
         self._worker_thread: Optional[threading.Thread] = None
 
         self._state: Dict[str, Any] = {
-            "status": "IDLE",  # IDLE | RUNNING | STOPPED | COMPLETED | ERROR
+            "status": "IDLE",  # IDLE | RUNNING | PAUSED | STOPPED | COMPLETED | ERROR
             "strategy_name": "場地自動清掃策略 (STRATEGY.md)",
             "current_step": 0,
             "total_steps": len(self._steps),
@@ -38,6 +40,8 @@ class StrategyRunner:
             "start_step": 1,
             "enable_vision": True,
             "vision_available": False,
+            "step_mode": False,
+            "waiting_next_step": False,
             "error": "",
         }
 
@@ -74,6 +78,7 @@ class StrategyRunner:
         enable_vision: bool = True,
         rtsp_url: str = "rtsp://localhost:8554/live/stream",
         reset_imu: bool = False,
+        step_mode: bool = False,
     ) -> Tuple[bool, str]:
         """
         啟動自動任務策略 (非阻塞，於背景執行緒運行)。
@@ -81,6 +86,7 @@ class StrategyRunner:
         :param enable_vision: 是否啟用紙屑視覺偵測與對準
         :param rtsp_url: 影像串流位址 (預設 rtsp://localhost:8554/live/stream)
         :param reset_imu: 啟動前是否將 IMU Yaw 歸零
+        :param step_mode: 是否啟用單步除錯模式 (每跑完一步暫停等待下一步指令)
         """
         if not self.robot.is_connected:
             msg = "無法啟動策略：請先連線 Arduino 序列埠 (或開啟模擬模式)"
@@ -93,10 +99,16 @@ class StrategyRunner:
             return (False, msg)
 
         with self._lock:
-            if self._state["status"] == "RUNNING" and self._worker_thread and self._worker_thread.is_alive():
+            if (
+                self._state["status"] in ("RUNNING", "PAUSED")
+                and self._worker_thread
+                and self._worker_thread.is_alive()
+            ):
                 return (False, "策略目前正在執行中，請先停止後再啟動")
 
             self._stop_event.clear()
+            self._next_step_event.clear()
+            self._step_mode = bool(step_mode)
             self._state.update({
                 "status": "RUNNING",
                 "current_step": start_step,
@@ -106,6 +118,8 @@ class StrategyRunner:
                 "start_step": start_step,
                 "enable_vision": bool(enable_vision),
                 "vision_available": False,
+                "step_mode": bool(step_mode),
+                "waiting_next_step": False,
                 "error": "",
             })
 
@@ -116,19 +130,51 @@ class StrategyRunner:
             daemon=True,
         )
         self._worker_thread.start()
-        return (True, f"已從第 {start_step} 步啟動自動策略")
+        mode_str = " [單步除錯模式]" if step_mode else ""
+        return (True, f"已從第 {start_step} 步啟動自動策略{mode_str}")
+
+    def step_next(self) -> Tuple[bool, str]:
+        """單步除錯模式下，放行執行下一個步驟"""
+        with self._lock:
+            if self._state["status"] != "PAUSED":
+                return (False, "目前不在單步暫停狀態")
+            next_idx = self._state["current_step"]
+        self._next_step_event.set()
+        return (True, f"開始執行第 {next_idx} 步")
+
+    def continue_run(self) -> Tuple[bool, str]:
+        """結束單步暫停並切換為連續自動執行剩餘步驟"""
+        with self._lock:
+            self._step_mode = False
+            self._state["step_mode"] = False
+            was_paused = self._state["status"] == "PAUSED"
+        if was_paused:
+            self._next_step_event.set()
+        else:
+            self._broadcast_status()
+        return (True, "已切換為連續自動執行模式")
+
+    def set_step_mode(self, enable: bool) -> Tuple[bool, str]:
+        """動態切換單步除錯模式 (執行中開啟將於當前步驟結束後暫停)"""
+        with self._lock:
+            self._step_mode = bool(enable)
+            self._state["step_mode"] = bool(enable)
+        self._broadcast_status()
+        return (True, f"單步除錯模式已{'開啟' if enable else '關閉'}")
 
     def stop(self) -> Tuple[bool, str]:
         """立即中斷目前正在執行的策略並安全煞停車輛"""
         self._stop_event.set()
+        self._next_step_event.set()
         self.robot.set_sweep(False)
         self.robot.set_vacuum(False)
         self.robot.stop()
 
         with self._lock:
-            was_running = self._state["status"] == "RUNNING"
-            if was_running:
+            was_active = self._state["status"] in ("RUNNING", "PAUSED")
+            if was_active:
                 self._state["status"] = "STOPPED"
+                self._state["waiting_next_step"] = False
                 self._state["sub_state"] = "使用者手動停止策略"
 
         self.robot.log("SYS", "⏹ 已發送策略停止訊號，車輛已安全煞停")
@@ -153,10 +199,16 @@ class StrategyRunner:
 
         try:
             if enable_vision:
-                vision = VisionSource(source=rtsp_url)
+                frame_provider = (
+                    self.robot.get_injected_frame if self.robot.mock_mode else None
+                )
+                vision = VisionSource(source=rtsp_url, frame_provider=frame_provider)
                 if vision.is_supported():
                     vision.start()
-                    self.robot.log("SYS", f"[策略視覺] 已背景連線影像串流: {rtsp_url}")
+                    if frame_provider is not None:
+                        self.robot.log("SYS", "[策略視覺] 已啟用模擬影格注入模式 (/sim)")
+                    else:
+                        self.robot.log("SYS", f"[策略視覺] 已背景連線影像串流: {rtsp_url}")
                     # 稍候最多 0.5 秒讓首幀有機會進來
                     ctx.sleep(0.5)
                 else:
@@ -178,12 +230,15 @@ class StrategyRunner:
                 f"▶ 策略開始執行：從第 {start_step}/{len(self._steps)} 步開始 (基準 Yaw={runtime_state['ref_yaw']:.1f}°)",
             )
 
-            for step in self._steps[start_step - 1 :]:
+            steps_to_run = self._steps[start_step - 1 :]
+            for idx, step in enumerate(steps_to_run):
                 if self._stop_event.is_set():
                     break
 
                 vis_ok = vision.is_available() if vision is not None else False
                 self._update_state(
+                    status="RUNNING",
+                    waiting_next_step=False,
                     current_step=step.index,
                     step_title=step.title,
                     sub_state=step.description,
@@ -193,12 +248,49 @@ class StrategyRunner:
 
                 ok = step.execute(ctx, runtime_state)
                 if not ok or self._stop_event.is_set():
-                    self._update_state(status="STOPPED", sub_state=f"已於第 {step.index} 步停止")
+                    self._update_state(
+                        status="STOPPED",
+                        waiting_next_step=False,
+                        sub_state=f"已於第 {step.index} 步停止",
+                    )
                     return
+
+                # 單步除錯模式：若尚有下一步，於步驟之間暫停等待手動放行
+                if idx < len(steps_to_run) - 1:
+                    with self._lock:
+                        step_mode_on = self._step_mode
+                    if step_mode_on:
+                        next_step = steps_to_run[idx + 1]
+                        self.robot.set_sweep(False)
+                        self.robot.set_vacuum(False)
+                        self.robot.stop()
+                        self._next_step_event.clear()
+                        self._update_state(
+                            status="PAUSED",
+                            waiting_next_step=True,
+                            current_step=next_step.index,
+                            step_title=next_step.title,
+                            sub_state=f"⏸ 單步暫停：已完成第 {step.index} 步，等待點擊「下一步」執行第 {next_step.index} 步",
+                            vision_available=(vision.is_available() if vision is not None else False),
+                        )
+                        self.robot.log(
+                            "SYS",
+                            f"⏸ [單步除錯] 已完成第 {step.index} 步，等待放行第 {next_step.index} 步 ({next_step.title})",
+                        )
+                        while not self._stop_event.is_set() and not self._next_step_event.is_set():
+                            self._next_step_event.wait(timeout=0.08)
+                        if self._stop_event.is_set():
+                            self._update_state(
+                                status="STOPPED",
+                                waiting_next_step=False,
+                                sub_state=f"已於第 {next_step.index} 步待命時停止",
+                            )
+                            return
 
             if not self._stop_event.is_set():
                 self._update_state(
                     status="COMPLETED",
+                    waiting_next_step=False,
                     sub_state="全部策略步驟已執行完成！",
                     vision_available=(vision.is_available() if vision is not None else False),
                 )
@@ -207,7 +299,12 @@ class StrategyRunner:
         except Exception as exc:
             err_msg = str(exc)
             self.robot.log("SYS", f"❌ 策略執行異常: {err_msg}")
-            self._update_state(status="ERROR", sub_state=f"發生異常: {err_msg}", error=err_msg)
+            self._update_state(
+                status="ERROR",
+                waiting_next_step=False,
+                sub_state=f"發生異常: {err_msg}",
+                error=err_msg,
+            )
         finally:
             self.robot.set_sweep(False)
             self.robot.set_vacuum(False)
@@ -218,7 +315,8 @@ class StrategyRunner:
             if vision is not None:
                 vision.stop()
             with self._lock:
-                if self._state["status"] == "RUNNING":
+                if self._state["status"] in ("RUNNING", "PAUSED"):
                     self._state["status"] = "STOPPED"
+                self._state["waiting_next_step"] = False
                 self._state["vision_available"] = False
             self._broadcast_status()

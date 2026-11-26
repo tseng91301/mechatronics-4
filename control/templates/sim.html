@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      --bg-dark: #0b1120;
+      --card-bg: #131c31;
+      --card-border: #23304c;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #10b981;
+      --accent-purple: #a855f7;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: var(--accent-purple);
+    }
+
+    .brand-tag {
+      font-size: 0.72rem;
+      background: rgba(168, 85, 247, 0.16);
+      color: #d8b4fe;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid rgba(168, 85, 247, 0.35);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .btn:hover { background: #273549; border-color: #3b82f6; }
+    .btn-primary { background: #0284c7; border-color: #38bdf8; color: #fff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-purple { background: #6d28d9; border-color: #a855f7; color: #fff; }
+    .btn-purple:hover { background: #5b21b6; }
+    .btn-danger { background: #b91c1c; border-color: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #991b1b; }
+    .btn-xs { padding: 0.22rem 0.5rem; font-size: 0.73rem; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+    }
+
+    .status-badge.active {
+      border-color: var(--accent-purple);
+      color: #d8b4fe;
+      background: rgba(168, 85, 247, 0.15);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .status-badge.active .status-dot {
+      background: var(--accent-purple);
+      box-shadow: 0 0 8px var(--accent-purple);
+    }
+
+    main {
+      padding: 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .robot-feedback-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.6rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+    }
+
+    .fb-item {
+      background: #0a0f1d;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .fb-label { font-size: 0.7rem; color: var(--text-muted); }
+    .fb-val { font-size: 0.92rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-blue); }
+
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.25fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1200px) {
+      .sim-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 820px) {
+      .sim-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.5rem;
+    }
+
+    .sensor-box {
+      background: #0a0f1d;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .sensor-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .sensor-big {
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-blue);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-blue);
+      cursor: pointer;
+    }
+
+    input[type="number"], input[type="text"], select {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .chk-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .compass-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #0a0f1d;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.6rem;
+    }
+
+    #simCompassSvg {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .cam-stage {
+      width: 100%;
+      background: #050811;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    #previewCanvas {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .vision-readout {
+      background: #0a0f1d;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.55rem 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .color-pill {
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: #1e293b;
+      color: #fff;
+    }
+    .color-pill.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+      <span>🧪 Mechatronics-4</span>
+      <span class="brand-tag">模擬資料注入台 (/sim)</span>
+    </div>
+
+    <div class="toolbar">
+      <button id="toggleMockBtn" class="btn btn-purple">✨ 啟動模擬模式</button>
+      <a href="/" class="btn btn-primary">🏠 開啟主控制台 (/) ↗</a>
+      <div id="simConnBadge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="simConnText">未啟動模擬</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ==================== 機器人輸出與策略同步列 ==================== -->
+    <div class="robot-feedback-strip">
+      <div class="fb-item">
+        <span class="fb-label">目前策略進度</span>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;">
+          <span id="fbStrategyStep" class="fb-val" style="color:#a855f7;">IDLE (0/16)</span>
+          <div style="display:flex; gap:0.25rem;">
+            <button id="simNextStepBtn" class="btn btn-primary btn-xs" style="display:none;" title="單步放行下一步">⏭</button>
+            <button id="simStopStratBtn" class="btn btn-danger btn-xs" style="display:none;" title="停止策略">⏹</button>
+          </div>
+        </div>
+      </div>
+      <div class="fb-item">
+        <span class="fb-label">底盤控制模式</span>
+        <span id="fbMode" class="fb-val">MANUAL</span>
+      </div>
+      <div class="fb-item">
+        <span class="fb-label">機器人目標航向 / 速度</span>
+        <span id="fbCmd" class="fb-val">0.0° / Spd: 0</span>
+      </div>
+      <div class="fb-item">
+        <span class="fb-label">擺頭 / 吸塵馬達</span>
+        <span id="fbClean" class="fb-val">擺頭 OFF | 吸塵 OFF</span>
+      </div>
+      <div class="fb-item">
+        <span class="fb-label">硬體防撞門檻 / E-Stop</span>
+        <span id="fbSafety" class="fb-val">150 mm | 正常</span>
+      </div>
+    </div>
+
+    <div class="sim-grid">
+      <!-- ==================== 卡片 1: 超音波注入 ==================== -->
+      <div class="card">
+        <div class="card-title">
+          <span>📡 超音波距離注入 (Ultrasonic)</span>
+          <label class="chk-row">
+            <input type="checkbox" id="chkAutoWave">
+            <span>自動隨機波動</span>
+          </label>
+        </div>
+
+        <!-- 前方超音波 -->
+        <div class="sensor-box">
+          <div class="sensor-top">
+            <span style="font-size:0.85rem; font-weight:700;">前方超音波 (Front)</span>
+            <span id="frontReadout" class="sensor-big">200.0 cm</span>
+          </div>
+          <input type="range" id="frontSlider" min="0" max="300" step="0.5" value="200">
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <input type="number" id="frontInputCm" step="0.5" value="200" style="width:90px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">cm</span>
+            <button id="frontApplyBtn" class="btn btn-primary btn-xs">套用</button>
+            <button id="frontOorBtn" class="btn btn-xs" style="margin-left:auto;">-1 (超距)</button>
+          </div>
+          <div class="preset-row">
+            <button class="btn btn-xs front-preset" data-cm="10">10 cm (E-Stop)</button>
+            <button class="btn btn-xs front-preset" data-cm="14">14 cm (邊界停靠)</button>
+            <button class="btn btn-xs front-preset" data-cm="140">140 cm (場地中間)</button>
+            <button class="btn btn-xs front-preset" data-cm="220">220 cm (開闊)</button>
+          </div>
+        </div>
+
+        <!-- 右方超音波 -->
+        <div class="sensor-box">
+          <div class="sensor-top">
+            <span style="font-size:0.85rem; font-weight:700;">右方超音波 (Right)</span>
+            <span id="rightReadout" class="sensor-big" style="color:var(--accent-purple);">15.0 cm</span>
+          </div>
+          <input type="range" id="rightSlider" min="0" max="250" step="0.5" value="15">
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <input type="number" id="rightInputCm" step="0.5" value="15" style="width:90px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">cm</span>
+            <button id="rightApplyBtn" class="btn btn-purple btn-xs">套用</button>
+            <button id="rightOorBtn" class="btn btn-xs" style="margin-left:auto;">-1 (無牆)</button>
+          </div>
+          <div class="preset-row">
+            <button class="btn btn-xs right-preset" data-cm="10">10 cm (太近)</button>
+            <button class="btn btn-xs right-preset" data-cm="15">15 cm (標準貼牆)</button>
+            <button class="btn btn-xs right-preset" data-cm="24">24 cm (太遠)</button>
+            <button class="btn btn-xs right-preset" data-cm="115">115 cm (右側開闊)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 卡片 2: IMU 角度注入 ==================== -->
+      <div class="card">
+        <div class="card-title">
+          <span>🧭 IMU 航向角注入 (Yaw)</span>
+          <label class="chk-row" title="開啟時模擬車體會自動依策略 target_yaw 平滑旋轉對齊">
+            <input type="checkbox" id="chkAutoKin" checked>
+            <span>跟隨策略轉向</span>
+          </label>
+        </div>
+
+        <div class="compass-wrap">
+          <svg id="simCompassSvg" width="210" height="210" viewBox="0 0 210 210">
+            <circle cx="105" cy="105" r="85" fill="#0f172a" stroke="#334155" stroke-width="2" />
+            <circle cx="105" cy="105" r="55" fill="none" stroke="#1e293b" stroke-dasharray="3 3" />
+            <text x="105" y="14" fill="#94a3b8" font-size="11" text-anchor="middle">0° (前)</text>
+            <text x="198" y="109" fill="#94a3b8" font-size="11" text-anchor="middle">+90°</text>
+            <text x="105" y="203" fill="#94a3b8" font-size="11" text-anchor="middle">±180°</text>
+            <text x="14" y="109" fill="#94a3b8" font-size="11" text-anchor="middle">-90°</text>
+
+            <!-- 策略目標航向虛線指針 -->
+            <line id="targetNeedle" x1="105" y1="105" x2="105" y2="28" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3" />
+            <!-- 模擬車體目前 Yaw 指針 -->
+            <line id="curNeedle" x1="105" y1="105" x2="105" y2="24" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+            <circle cx="105" cy="105" r="6" fill="#38bdf8" />
+          </svg>
+        </div>
+
+        <div class="sensor-box">
+          <div class="sensor-top">
+            <span style="font-size:0.85rem; font-weight:700;">目前模擬 Yaw</span>
+            <span id="yawReadout" class="sensor-big">0.0°</span>
+          </div>
+          <input type="range" id="yawSlider" min="-180" max="180" step="0.5" value="0">
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <input type="number" id="yawInput" step="1" min="-180" max="180" value="0" style="width:90px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">度</span>
+            <button id="yawApplyBtn" class="btn btn-primary btn-xs">注入角度</button>
+          </div>
+          <div class="preset-row">
+            <button class="btn btn-xs yaw-preset" data-yaw="-90">-90°</button>
+            <button class="btn btn-xs yaw-preset" data-yaw="0">0°</button>
+            <button class="btn btn-xs yaw-preset" data-yaw="90">+90°</button>
+            <button class="btn btn-xs yaw-preset" data-yaw="180">180°</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 卡片 3: 模擬鏡頭與紙屑畫面餵入 ==================== -->
+      <div class="card">
+        <div class="card-title">
+          <span>📹 模擬攝影機與紙屑畫面餵入</span>
+          <label class="chk-row">
+            <input type="checkbox" id="chkStreamCam" checked>
+            <span>推流畫面 (10 FPS)</span>
+          </label>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; justify-content:space-between;">
+          <div style="display:flex; gap:0.35rem;">
+            <button class="color-pill selected" data-color="#00dc00" style="background:#059669;">🟢 綠紙屑</button>
+            <button class="color-pill" data-color="#1e64ff" style="background:#1d4ed8;">🔵 藍紙屑</button>
+            <button class="color-pill" data-color="#ff2020" style="background:#dc2626;">🔴 紅紙屑</button>
+          </div>
+          <div style="display:flex; gap:0.35rem;">
+            <button id="randomConfettiBtn" class="btn btn-xs">🎲 隨機撒落</button>
+            <button id="clearConfettiBtn" class="btn btn-xs">🧹 清空</button>
+          </div>
+        </div>
+
+        <div class="cam-stage">
+          <canvas id="previewCanvas" width="320" height="240"></canvas>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:0.6rem; align-items:center; justify-content:space-between;">
+          <label class="chk-row" title="當機器人前進/轉彎/吸塵時，畫布上的紙屑會自動跟隨移動或被吸除">
+            <input type="checkbox" id="chkCamPhysics" checked>
+            <span>隨馬達移動/吸除紙屑</span>
+          </label>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <label class="btn btn-xs" style="cursor:pointer;">
+              📁 上傳測試圖
+              <input type="file" id="uploadImgInput" accept="image/*" style="display:none;">
+            </label>
+            <button id="useVirtualCanvasBtn" class="btn btn-xs" style="display:none;">🎨 切回虛擬畫布</button>
+          </div>
+        </div>
+
+        <div class="vision-readout">
+          <span>Confetti: <strong id="visHas" style="color:#ef4444;">NO</strong></span>
+          <span>Center: <strong id="visCenter" style="color:#38bdf8;">--</strong></span>
+          <span>BBox: <strong id="visBBox" style="color:#f59e0b;">--</strong></span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let ws = null;
+    let isMock = false;
+    let isConnected = false;
+
+    // 機器人最新回傳狀態 (用於運動物理與狀態顯示)
+    let simState = {
+      yaw: 0,
+      target_yaw: 0,
+      target_speed: 0,
+      mode: 0,
+      mode_name: "MANUAL",
+      sweep_enabled: false,
+      relay_state: false,
+      safety_threshold_mm: 150,
+      e_stop_triggered: false,
+    };
+
+    // 虛擬地面紙屑清單 (座標 0~320 x 0~240)
+    let confettiScraps = [];
+    let selectedColor = "#00dc00";
+    let uploadedImage = null;
+    let lastDetection = { has_confetti: false, bbox: null, center: null };
+    let vacuumNearTimer = 0;
+
+    // DOM Elements
+    const toggleMockBtn = document.getElementById('toggleMockBtn');
+    const simConnBadge = document.getElementById('simConnBadge');
+    const simConnText = document.getElementById('simConnText');
+
+    const fbStrategyStep = document.getElementById('fbStrategyStep');
+    const simNextStepBtn = document.getElementById('simNextStepBtn');
+    const simStopStratBtn = document.getElementById('simStopStratBtn');
+    const fbMode = document.getElementById('fbMode');
+    const fbCmd = document.getElementById('fbCmd');
+    const fbClean = document.getElementById('fbClean');
+    const fbSafety = document.getElementById('fbSafety');
+
+    const frontReadout = document.getElementById('frontReadout');
+    const frontSlider = document.getElementById('frontSlider');
+    const frontInputCm = document.getElementById('frontInputCm');
+    const rightReadout = document.getElementById('rightReadout');
+    const rightSlider = document.getElementById('rightSlider');
+    const rightInputCm = document.getElementById('rightInputCm');
+    const chkAutoWave = document.getElementById('chkAutoWave');
+
+    const yawReadout = document.getElementById('yawReadout');
+    const yawSlider = document.getElementById('yawSlider');
+    const yawInput = document.getElementById('yawInput');
+    const chkAutoKin = document.getElementById('chkAutoKin');
+    const simCompassSvg = document.getElementById('simCompassSvg');
+    const curNeedle = document.getElementById('curNeedle');
+    const targetNeedle = document.getElementById('targetNeedle');
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const sourceCanvas = document.createElement('canvas');
+    sourceCanvas.width = 320;
+    sourceCanvas.height = 240;
+    const sourceCtx = sourceCanvas.getContext('2d');
+
+    const chkStreamCam = document.getElementById('chkStreamCam');
+    const chkCamPhysics = document.getElementById('chkCamPhysics');
+    const uploadImgInput = document.getElementById('uploadImgInput');
+    const useVirtualCanvasBtn = document.getElementById('useVirtualCanvasBtn');
+    const visHas = document.getElementById('visHas');
+    const visCenter = document.getElementById('visCenter');
+    const visBBox = document.getElementById('visBBox');
+
+    function initWebSocket() {
+      const loc = window.location;
+      const wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${wsProto}//${loc.host}/ws`);
+
+      ws.onopen = () => {
+        wsSend({ action: "sim_get_state" });
+        wsSend({ action: "get_strategy_status" });
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          handleMsg(data);
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        setTimeout(initWebSocket, 3000);
+      };
+    }
+
+    function wsSend(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    function handleMsg(data) {
+      const t = data.type;
+      if (t === "status") {
+        isConnected = !!data.connected;
+        isMock = !!data.mock_mode;
+        updateMockBanner();
+      } else if (t === "sim_state") {
+        simState = { ...simState, ...data };
+        isConnected = !!data.connected;
+        isMock = !!data.mock_mode;
+        updateMockBanner();
+        updateUiFromState(data);
+      } else if (t === "ultrasonic") {
+        updateUltrasonicUi(data.front_cm, data.right_cm);
+      } else if (t === "imu") {
+        simState.yaw = data.yaw;
+        updateYawUi(data.yaw, simState.target_yaw);
+      } else if (t === "relay") {
+        simState.relay_state = !!data.state;
+        fbClean.innerText = `擺頭 ${simState.sweep_enabled ? 'ON' : 'OFF'} | 吸塵 ${simState.relay_state ? 'ON' : 'OFF'}`;
+      } else if (t === "strategy_status") {
+        fbStrategyStep.innerText = `${data.status} (${data.current_step}/${data.total_steps})`;
+        simNextStepBtn.style.display = (data.status === "PAUSED") ? "inline-flex" : "none";
+        simStopStratBtn.style.display = (data.status === "RUNNING" || data.status === "PAUSED") ? "inline-flex" : "none";
+      } else if (t === "sim_vision_result") {
+        lastDetection = data;
+        updateVisionReadout(data);
+      }
+    }
+
+    function updateMockBanner() {
+      simConnBadge.className = "status-badge" + (isMock ? " active" : "");
+      if (isMock) {
+        simConnText.innerText = "模擬模式運行中";
+        toggleMockBtn.innerText = "🛑 停止模擬";
+        toggleMockBtn.className = "btn btn-danger";
+      } else if (isConnected) {
+        simConnText.innerText = "實體連線中 (建議切回模擬)";
+        toggleMockBtn.innerText = "✨ 切換至模擬模式";
+        toggleMockBtn.className = "btn btn-purple";
+      } else {
+        simConnText.innerText = "未啟動模擬";
+        toggleMockBtn.innerText = "✨ 啟動模擬模式";
+        toggleMockBtn.className = "btn btn-purple";
+      }
+    }
+
+    function updateUltrasonicUi(frontCm, rightCm) {
+      frontReadout.innerText = (frontCm !== undefined && frontCm >= 0) ? `${Number(frontCm).toFixed(1)} cm` : "-1 (超距)";
+      rightReadout.innerText = (rightCm !== undefined && rightCm >= 0) ? `${Number(rightCm).toFixed(1)} cm` : "-1 (無牆)";
+    }
+
+    function updateYawUi(yaw, tgtYaw) {
+      yawReadout.innerText = `${Number(yaw).toFixed(1)}°`;
+      if (document.activeElement !== yawSlider && document.activeElement !== yawInput) {
+        yawSlider.value = yaw;
+        yawInput.value = yaw;
+      }
+      const rad = ((yaw - 90) * Math.PI) / 180;
+      curNeedle.setAttribute("x2", 105 + 78 * Math.cos(rad));
+      curNeedle.setAttribute("y2", 105 + 78 * Math.sin(rad));
+
+      const tRad = ((tgtYaw - 90) * Math.PI) / 180;
+      targetNeedle.setAttribute("x2", 105 + 75 * Math.cos(tRad));
+      targetNeedle.setAttribute("y2", 105 + 75 * Math.sin(tRad));
+    }
+
+    function updateUiFromState(d) {
+      updateUltrasonicUi(d.front_cm, d.right_cm);
+      updateYawUi(d.yaw, d.target_yaw);
+      chkAutoKin.checked = !!d.auto_kinematics;
+      chkAutoWave.checked = !!d.auto_wave;
+
+      fbMode.innerText = d.mode_name || "MANUAL";
+      fbCmd.innerText = `${Number(d.target_yaw || 0).toFixed(1)}° / Spd: ${d.target_speed || 0}`;
+      fbClean.innerText = `擺頭 ${d.sweep_enabled ? 'ON' : 'OFF'} | 吸塵 ${d.relay_state ? 'ON' : 'OFF'}`;
+      fbSafety.innerText = `${d.safety_threshold_mm} mm | ${d.e_stop_triggered ? '⚠️ E-STOP' : '正常'}`;
+      fbSafety.style.color = d.e_stop_triggered ? "#ef4444" : "#38bdf8";
+    }
+
+    function updateVisionReadout(res) {
+      if (res.has_confetti) {
+        visHas.innerText = "YES";
+        visHas.style.color = "#10b981";
+        visCenter.innerText = res.center ? `(${res.center.x}%, ${res.center.y}%)` : "--";
+        visBBox.innerText = res.bbox ? `X:[${res.bbox.x_min}~${res.bbox.x_max}%] Y:[${res.bbox.y_min}~${res.bbox.y_max}%]` : "--";
+      } else {
+        visHas.innerText = "NO";
+        visHas.style.color = "#ef4444";
+        visCenter.innerText = "None";
+        visBBox.innerText = "None";
+      }
+    }
+
+    // ------------------ 傳送感測器注入 ------------------
+    function sendFrontCm(cm) {
+      const mm = cm < 0 ? -1 : Math.round(cm * 10);
+      if (cm >= 0) {
+        frontSlider.value = cm;
+        frontInputCm.value = cm;
+      }
+      wsSend({ action: "sim_set_sensors", front_mm: mm });
+    }
+
+    function sendRightCm(cm) {
+      const mm = cm < 0 ? -1 : Math.round(cm * 10);
+      if (cm >= 0) {
+        rightSlider.value = cm;
+        rightInputCm.value = cm;
+      }
+      wsSend({ action: "sim_set_sensors", right_mm: mm });
+    }
+
+    function sendYaw(deg) {
+      yawSlider.value = deg;
+      yawInput.value = deg;
+      wsSend({ action: "sim_set_sensors", yaw: Number(deg) });
+    }
+
+    // ------------------ 虛擬攝影機渲染與紙屑物理 ------------------
+    function addScrapCluster(cx, cy, color) {
+      for (let i = 0; i < 4; i++) {
+        confettiScraps.push({
+          x: cx + (Math.random() - 0.5) * 18,
+          y: cy + (Math.random() - 0.5) * 14,
+          w: 10 + Math.random() * 8,
+          h: 8 + Math.random() * 7,
+          color: color,
+        });
+      }
+    }
+
+    function stepCamPhysics(dt) {
+      if (!chkCamPhysics.checked || uploadedImage || !isMock) return;
+
+      const spd = Number(simState.target_speed || 0);
+      const yawErr = ((Number(simState.target_yaw || 0) - Number(simState.yaw || 0) + 180) % 360) - 180;
+
+      // 當前進時，地面紙屑往鏡頭下方 (Y+) 移動；當轉向時，地面紙屑反方向水平 (X-) 移動
+      if (spd !== 0) {
+        const dy = (spd / 130.0) * 32.0 * dt;
+        confettiScraps.forEach(s => { s.y += dy; });
+      }
+      if (Math.abs(yawErr) > 1.5 && (simState.mode & 0x01)) {
+        const turnSign = yawErr > 0 ? 1 : -1;
+        const dx = -turnSign * 75.0 * dt;
+        confettiScraps.forEach(s => { s.x += dx; });
+      }
+
+      // 若開啟吸塵與擺頭且紙屑已經來到畫面下半部，模擬 1.5 秒後被吸光清除
+      if (simState.relay_state && simState.sweep_enabled) {
+        const hasClose = confettiScraps.some(s => s.y >= 135 && s.x >= 50 && s.x <= 270);
+        if (hasClose) {
+          vacuumNearTimer += dt;
+          if (vacuumNearTimer >= 1.5) {
+            confettiScraps = confettiScraps.filter(s => s.y < 120);
+            vacuumNearTimer = 0;
+          }
+        }
+      } else {
+        vacuumNearTimer = 0;
+      }
+
+      // 移除移出畫面外的紙屑
+      confettiScraps = confettiScraps.filter(s => s.y > -20 && s.y < 260 && s.x > -30 && s.x < 350);
+    }
+
+    function renderCameraCanvas() {
+      // 1. 畫出乾淨的地面/照片來源到 sourceCanvas (供辨識用，不含標記框)
+      if (uploadedImage) {
+        sourceCtx.drawImage(uploadedImage, 0, 0, 320, 240);
+      } else {
+        // 深灰色素色地板紋理 (與高飽和紅綠藍紙屑形成對比)
+        sourceCtx.fillStyle = "#2b2f36";
+        sourceCtx.fillRect(0, 0, 320, 240);
+        // 遠景牆角提示線 (頂部 15% ROI 區域以上)
+        sourceCtx.fillStyle = "#1c1f24";
+        sourceCtx.fillRect(0, 0, 320, 34);
+
+        confettiScraps.forEach(s => {
+          sourceCtx.fillStyle = s.color;
+          sourceCtx.fillRect(s.x - s.w / 2, s.y - s.h / 2, s.w, s.h);
+        });
+      }
+
+      // 2. 複製到顯示用的 previewCanvas，再疊加辨識結果框與準星
+      previewCtx.drawImage(sourceCanvas, 0, 0);
+
+      // ROI cutoff line (15%)
+      previewCtx.strokeStyle = "rgba(217, 70, 239, 0.55)";
+      previewCtx.lineWidth = 1;
+      previewCtx.beginPath();
+      previewCtx.moveTo(0, 240 * 0.15);
+      previewCtx.lineTo(320, 240 * 0.15);
+      previewCtx.stroke();
+
+      // 中心對準輔助線 (50%)
+      previewCtx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+      previewCtx.setLineDash([4, 4]);
+      previewCtx.beginPath();
+      previewCtx.moveTo(160, 0);
+      previewCtx.lineTo(160, 240);
+      previewCtx.stroke();
+      previewCtx.setLineDash([]);
+
+      if (lastDetection && lastDetection.has_confetti && lastDetection.bbox && lastDetection.center) {
+        const b = lastDetection.bbox;
+        const c = lastDetection.center;
+        const bx = (b.x_min / 100) * 320;
+        const by = (b.y_min / 100) * 240;
+        const bw = (b.width / 100) * 320;
+        const bh = (b.height / 100) * 240;
+        previewCtx.strokeStyle = "#facc15";
+        previewCtx.lineWidth = 2;
+        previewCtx.strokeRect(bx, by, bw, bh);
+
+        const cx = (c.x / 100) * 320;
+        const cy = (c.y / 100) * 240;
+        previewCtx.fillStyle = "#38bdf8";
+        previewCtx.beginPath();
+        previewCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+        previewCtx.fill();
+      }
+    }
+
+    // 定時 10 FPS 更新物理並推送影格給後端
+    setInterval(() => {
+      stepCamPhysics(0.1);
+      renderCameraCanvas();
+      if (chkStreamCam.checked && ws && ws.readyState === WebSocket.OPEN) {
+        const dataUrl = sourceCanvas.toDataURL('image/jpeg', 0.72);
+        wsSend({ action: "sim_set_frame", image_base64: dataUrl });
+      }
+    }, 100);
+
+    // ------------------ 事件綁定 ------------------
+    toggleMockBtn.addEventListener('click', () => {
+      if (isMock) {
+        wsSend({ action: "disconnect" });
+      } else {
+        wsSend({ action: "connect", port: "MOCK", baudrate: 9600 });
+      }
+    });
+
+    frontSlider.addEventListener('input', () => sendFrontCm(parseFloat(frontSlider.value)));
+    document.getElementById('frontApplyBtn').addEventListener('click', () => sendFrontCm(parseFloat(frontInputCm.value) || 0));
+    document.getElementById('frontOorBtn').addEventListener('click', () => sendFrontCm(-1));
+    document.querySelectorAll('.front-preset').forEach(btn => {
+      btn.addEventListener('click', () => sendFrontCm(parseFloat(btn.dataset.cm)));
+    });
+
+    rightSlider.addEventListener('input', () => sendRightCm(parseFloat(rightSlider.value)));
+    document.getElementById('rightApplyBtn').addEventListener('click', () => sendRightCm(parseFloat(rightInputCm.value) || 0));
+    document.getElementById('rightOorBtn').addEventListener('click', () => sendRightCm(-1));
+    document.querySelectorAll('.right-preset').forEach(btn => {
+      btn.addEventListener('click', () => sendRightCm(parseFloat(btn.dataset.cm)));
+    });
+
+    yawSlider.addEventListener('input', () => sendYaw(parseFloat(yawSlider.value)));
+    document.getElementById('yawApplyBtn').addEventListener('click', () => sendYaw(parseFloat(yawInput.value) || 0));
+    document.querySelectorAll('.yaw-preset').forEach(btn => {
+      btn.addEventListener('click', () => sendYaw(parseFloat(btn.dataset.yaw)));
+    });
+
+    chkAutoKin.addEventListener('change', () => {
+      wsSend({ action: "sim_set_sensors", auto_kinematics: chkAutoKin.checked });
+    });
+    chkAutoWave.addEventListener('change', () => {
+      wsSend({ action: "sim_set_sensors", auto_wave: chkAutoWave.checked });
+    });
+
+    // 點擊羅盤直接設定模擬 Yaw
+    simCompassSvg.addEventListener('pointerdown', (e) => {
+      const rect = simCompassSvg.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      let deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+      deg = Math.round(deg * 2) / 2;
+      sendYaw(deg);
+    });
+
+    // 畫布顏色與點擊放置紙屑
+    document.querySelectorAll('.color-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-pill').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedColor = btn.dataset.color;
+      });
+    });
+
+    previewCanvas.addEventListener('pointerdown', (e) => {
+      if (uploadedImage) return;
+      const rect = previewCanvas.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 320;
+      const y = ((e.clientY - rect.top) / rect.height) * 240;
+      addScrapCluster(x, y, selectedColor);
+    });
+
+    document.getElementById('randomConfettiBtn').addEventListener('click', () => {
+      uploadedImage = null;
+      useVirtualCanvasBtn.style.display = "none";
+      const colors = ["#00dc00", "#1e64ff", "#ff2020"];
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      addScrapCluster(80 + Math.random() * 160, 75 + Math.random() * 90, c);
+    });
+
+    document.getElementById('clearConfettiBtn').addEventListener('click', () => {
+      confettiScraps = [];
+      uploadedImage = null;
+      useVirtualCanvasBtn.style.display = "none";
+    });
+
+    uploadImgInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          uploadedImage = img;
+          useVirtualCanvasBtn.style.display = "inline-flex";
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    useVirtualCanvasBtn.addEventListener('click', () => {
+      uploadedImage = null;
+      useVirtualCanvasBtn.style.display = "none";
+    });
+
+    simNextStepBtn.addEventListener('click', () => wsSend({ action: "strategy_step_next" }));
+    simStopStratBtn.addEventListener('click', () => wsSend({ action: "strategy_stop" }));
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initWebSocket();
+      renderCameraCanvas();
+    });
+  </script>
+</body>
+
+</html>

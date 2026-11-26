@@ -6,6 +6,7 @@ Mechatronics-4 機器人車輛 Web 控制伺服器
 """
 
 import asyncio
+import base64
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -175,6 +176,16 @@ async def get_legacy(request: Request):
     )
 
 
+@app.get("/sim", response_class=HTMLResponse)
+async def get_sim(request: Request):
+    """回傳獨立的模擬資料注入頁面 (餵入超音波、IMU 與模擬鏡頭畫面)"""
+    return templates.TemplateResponse(
+        request=request,
+        name="sim.html",
+        context={"title": "Mechatronics-4 模擬資料注入台 (/sim)"},
+    )
+
+
 # ==================== HTTP REST API ====================
 class ConnectRequest(BaseModel):
     port: str
@@ -220,6 +231,11 @@ class StrategyStartRequest(BaseModel):
     enable_vision: bool = True
     rtsp_url: str = "rtsp://localhost:8554/live/stream"
     reset_imu: bool = False
+    step_mode: bool = False
+
+
+class StrategyStepModeRequest(BaseModel):
+    step_mode: bool = True
 
 
 @app.get("/api/strategy/status")
@@ -234,7 +250,26 @@ async def api_strategy_start(req: StrategyStartRequest):
         enable_vision=req.enable_vision,
         rtsp_url=req.rtsp_url,
         reset_imu=req.reset_imu,
+        step_mode=req.step_mode,
     )
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
+
+
+@app.post("/api/strategy/step_next")
+async def api_strategy_step_next():
+    ok, msg = strategy_runner.step_next()
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
+
+
+@app.post("/api/strategy/continue")
+async def api_strategy_continue():
+    ok, msg = strategy_runner.continue_run()
+    return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
+
+
+@app.post("/api/strategy/step_mode")
+async def api_strategy_step_mode(req: StrategyStepModeRequest):
+    ok, msg = strategy_runner.set_step_mode(req.step_mode)
     return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
 
 
@@ -242,6 +277,92 @@ async def api_strategy_start(req: StrategyStartRequest):
 async def api_strategy_stop():
     ok, msg = strategy_runner.stop()
     return {"success": ok, "message": msg, "status": strategy_runner.get_status()}
+
+
+# ==================== 模擬器資料注入 API (/sim) ====================
+_sim_preview_detector = None
+
+
+def _get_sim_preview_detector():
+    global _sim_preview_detector
+    if _sim_preview_detector is None:
+        try:
+            from frame_recognize.confetti_detector import ConfettiDetector
+            _sim_preview_detector = ConfettiDetector(roi_top_ratio=0.15)
+        except Exception:
+            _sim_preview_detector = False
+    return _sim_preview_detector if _sim_preview_detector else None
+
+
+def _decode_and_inject_frame(image_base64: str) -> dict:
+    """解碼瀏覽器傳入之 Base64 JPEG/PNG 影格並注入 RobotController，同時回傳即時辨識結果"""
+    try:
+        import cv2
+        import numpy as np
+    except ImportError as exc:
+        return {"success": False, "error": f"缺少 OpenCV/NumPy: {exc}"}
+
+    raw_b64 = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
+    try:
+        img_bytes = base64.b64decode(raw_b64)
+        arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    except Exception as exc:
+        return {"success": False, "error": f"影格解碼失敗: {exc}"}
+
+    if frame is None:
+        return {"success": False, "error": "無效影像資料"}
+
+    bridge.inject_camera_frame(frame)
+    detector = _get_sim_preview_detector()
+    if detector is None:
+        return {"success": True, "has_confetti": False, "bbox": None, "center": None}
+
+    has_c, bbox, center = detector.detect(frame)
+    return {
+        "success": True,
+        "has_confetti": bool(has_c),
+        "bbox": bbox.to_dict() if bbox is not None else None,
+        "center": center.to_dict() if center is not None else None,
+    }
+
+
+class SimSensorsRequest(BaseModel):
+    front_mm: Optional[int] = None
+    right_mm: Optional[int] = None
+    yaw: Optional[float] = None
+    pitch: Optional[float] = None
+    roll: Optional[float] = None
+    auto_kinematics: Optional[bool] = None
+    auto_wave: Optional[bool] = None
+
+
+class SimFrameRequest(BaseModel):
+    image_base64: str
+
+
+@app.get("/api/sim/state")
+async def api_sim_state():
+    return {
+        "sim": bridge.get_sim_state(),
+        "strategy": strategy_runner.get_status(),
+    }
+
+
+@app.post("/api/sim/sensors")
+async def api_sim_sensors(req: SimSensorsRequest):
+    if req.front_mm is not None or req.right_mm is not None:
+        bridge.inject_ultrasonic(front_mm=req.front_mm, right_mm=req.right_mm)
+    if req.yaw is not None or req.pitch is not None or req.roll is not None:
+        bridge.inject_imu(yaw=req.yaw, pitch=req.pitch, roll=req.roll)
+    if req.auto_kinematics is not None or req.auto_wave is not None:
+        bridge.set_sim_options(auto_kinematics=req.auto_kinematics, auto_wave=req.auto_wave)
+    return {"success": True, "sim": bridge.get_sim_state()}
+
+
+@app.post("/api/sim/frame")
+async def api_sim_frame(req: SimFrameRequest):
+    return _decode_and_inject_frame(req.image_base64)
 
 
 @app.post("/api/turn_speed")
@@ -372,6 +493,7 @@ async def websocket_endpoint(websocket: WebSocket):
     for init_msg in bridge.get_initial_messages():
         await websocket.send_json(init_msg)
     await websocket.send_json(strategy_runner.get_status())
+    await websocket.send_json(bridge.get_sim_state())
 
     try:
         while True:
@@ -459,20 +581,62 @@ async def websocket_endpoint(websocket: WebSocket):
                 enable_vision = bool(data.get("enable_vision", True))
                 rtsp_url = str(data.get("rtsp_url", "rtsp://localhost:8554/live/stream"))
                 reset_imu = bool(data.get("reset_imu", False))
+                step_mode = bool(data.get("step_mode", False))
                 ok, _ = strategy_runner.start(
                     start_step=start_step,
                     enable_vision=enable_vision,
                     rtsp_url=rtsp_url,
                     reset_imu=reset_imu,
+                    step_mode=step_mode,
                 )
                 if not ok:
                     await websocket.send_json(strategy_runner.get_status())
+
+            elif action == "strategy_step_next":
+                strategy_runner.step_next()
+
+            elif action == "strategy_continue":
+                strategy_runner.continue_run()
+
+            elif action == "strategy_set_step_mode":
+                strategy_runner.set_step_mode(bool(data.get("step_mode", False)))
 
             elif action == "strategy_stop":
                 strategy_runner.stop()
 
             elif action == "get_strategy_status":
                 await websocket.send_json(strategy_runner.get_status())
+
+            elif action == "sim_get_state":
+                await websocket.send_json(bridge.get_sim_state())
+
+            elif action == "sim_set_sensors":
+                if "front_mm" in data or "right_mm" in data:
+                    bridge.inject_ultrasonic(
+                        front_mm=data.get("front_mm"),
+                        right_mm=data.get("right_mm"),
+                    )
+                if "yaw" in data or "pitch" in data or "roll" in data:
+                    bridge.inject_imu(
+                        yaw=data.get("yaw"),
+                        pitch=data.get("pitch"),
+                        roll=data.get("roll"),
+                    )
+                if "auto_kinematics" in data or "auto_wave" in data:
+                    bridge.set_sim_options(
+                        auto_kinematics=data.get("auto_kinematics"),
+                        auto_wave=data.get("auto_wave"),
+                    )
+                await websocket.send_json(bridge.get_sim_state())
+
+            elif action == "sim_set_frame":
+                img_b64 = str(data.get("image_base64", ""))
+                if img_b64:
+                    vision_res = _decode_and_inject_frame(img_b64)
+                    await websocket.send_json({
+                        "type": "sim_vision_result",
+                        **vision_res,
+                    })
 
             elif action == "reconnect":
                 port = data.get("port", "") or bridge.port
