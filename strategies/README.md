@@ -15,6 +15,8 @@ strategies/
 ├── README.zh.md                # Traditional Chinese guide
 ├── arena_strategy.md           # 16-step arena cleaning mission specification (formerly STRATEGY.md)
 ├── arena_strategy.py           # Main 16-step arena cleaning strategy implementation
+├── confetti_align_strategy.py  # Standalone confetti visual alignment test strategy (1 step)
+├── confetti_clean_strategy.py  # Confetti visual alignment + vacuum sweep strategy (2 steps)
 ├── registry.py                 # Auto-discovery and dynamic registration of strategies
 ├── runner.py                   # Background runner (multi-strategy, start-at-step, E-stop, step-debug)
 └── techniques/                 # Reusable atomic motion/vision/vacuum building blocks

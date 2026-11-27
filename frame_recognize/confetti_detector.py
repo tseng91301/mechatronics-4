@@ -110,6 +110,8 @@ class DetectionResult:
     count: int = 0
     annotated_frame: Optional[np.ndarray] = None
     items: Optional[List[Dict[str, Any]]] = None
+    color: Optional[str] = None
+    color_counts: Optional[Dict[str, int]] = None
 
     # 支援解包前 3 個核心項目：has_confetti, bbox, center = result
     def __iter__(self):
@@ -217,10 +219,11 @@ class ConfettiDetector:
         mask_b = cv2.inRange(hsv, self.blue_lower, self.blue_upper)
         mask_r1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
         mask_r2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
+        mask_r = cv2.bitwise_or(mask_r1, mask_r2)
 
         # 合併三種顏色遮罩
         mask = cv2.bitwise_or(mask_g, mask_b)
-        mask = cv2.bitwise_or(mask, cv2.bitwise_or(mask_r1, mask_r2))
+        mask = cv2.bitwise_or(mask, mask_r)
 
         # 3. 視野感興趣區域 (ROI) 遮蔽：忽略上方區域
         if self.roi_y > 0:
@@ -233,6 +236,7 @@ class ConfettiDetector:
         # 5. 尋找外輪廓並依幾何特徵過濾
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         valid_items: List[Dict[str, Any]] = []
+        total_color_counts: Dict[str, int] = {"red": 0, "green": 0, "blue": 0}
 
         for cnt in contours:
             area = cv2.contourArea(cnt)
@@ -255,6 +259,18 @@ class ConfettiDetector:
             cx = int(moments["m10"] / moments["m00"])
             cy = int(moments["m01"] / moments["m00"])
 
+            # 統計此輪廓內對應紅/綠/藍遮罩的像素數以判別顏色
+            cnt_mask = np.zeros((bh, bw), dtype=np.uint8)
+            cv2.drawContours(cnt_mask, [cnt], -1, 255, -1, offset=(-x, -y))
+            r_px = cv2.countNonZero(cv2.bitwise_and(mask_r[y : y + bh, x : x + bw], cnt_mask))
+            g_px = cv2.countNonZero(cv2.bitwise_and(mask_g[y : y + bh, x : x + bw], cnt_mask))
+            b_px = cv2.countNonZero(cv2.bitwise_and(mask_b[y : y + bh, x : x + bw], cnt_mask))
+            cnt_colors = {"red": r_px, "green": g_px, "blue": b_px}
+            item_color = max(cnt_colors, key=cnt_colors.get) if max(cnt_colors.values()) > 0 else "unknown"
+            total_color_counts["red"] += r_px
+            total_color_counts["green"] += g_px
+            total_color_counts["blue"] += b_px
+
             # 還原為原始解析度座標
             orig_bbox = (int(x * scale_x), int(y * scale_y), int(bw * scale_x), int(bh * scale_y))
             orig_center = (int(cx * scale_x), int(cy * scale_y))
@@ -263,6 +279,7 @@ class ConfettiDetector:
                 "bbox": orig_bbox,
                 "center": orig_center,
                 "area": area,
+                "color": item_color,
             })
 
         # 若無符合條件之紙屑
@@ -277,6 +294,8 @@ class ConfettiDetector:
                 count=0,
                 annotated_frame=annotated_frame,
                 items=[],
+                color=None,
+                color_counts=None,
             )
 
         # 6. 計算整體範圍與整體中心點 (換算為 0.0% ~ 100.0%)
@@ -313,6 +332,10 @@ class ConfettiDetector:
 
         center_percent = ConfettiCenter(x=cx_pct, y=cy_pct)
 
+        dominant_color: Optional[str] = None
+        if max(total_color_counts.values()) > 0:
+            dominant_color = max(total_color_counts, key=total_color_counts.get)
+
         annotated_frame = self.draw_annotations(
             frame,
             has_confetti=True,
@@ -321,6 +344,7 @@ class ConfettiDetector:
             items=valid_items,
             group_pixel_rect=(gx1, gy1, gx2, gy2),
             group_pixel_center=(int(avg_cx), int(avg_cy)),
+            color=dominant_color,
         ) if visualize else None
 
         return DetectionResult(
@@ -330,6 +354,8 @@ class ConfettiDetector:
             count=len(valid_items),
             annotated_frame=annotated_frame,
             items=valid_items,
+            color=dominant_color,
+            color_counts=total_color_counts,
         )
 
     def draw_annotations(
@@ -342,6 +368,7 @@ class ConfettiDetector:
         group_pixel_rect: Optional[Tuple[int, int, int, int]] = None,
         group_pixel_center: Optional[Tuple[int, int]] = None,
         fps: Optional[float] = None,
+        color: Optional[str] = None,
     ) -> np.ndarray:
         """
         在畫面上繪製可視化標記與百分比資訊 HUD
@@ -428,7 +455,8 @@ class ConfettiDetector:
         # 狀態文字行
         cnt_num = len(items) if items is not None else (1 if has_confetti else 0)
         status_color = (0, 255, 0) if has_confetti else (0, 0, 255)
-        status_text = f"Confetti: {'YES' if has_confetti else 'NO'} | Count: {cnt_num}"
+        color_tag = f" [{color.upper()}]" if (has_confetti and color) else ""
+        status_text = f"Confetti: {'YES' if has_confetti else 'NO'}{color_tag} | Count: {cnt_num}"
         if fps is not None:
             status_text += f" | {fps:.1f} FPS"
 

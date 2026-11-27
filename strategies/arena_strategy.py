@@ -47,13 +47,13 @@ def _make_confetti_tick(
     if vision is None or not vision.is_supported():
         return None
 
-    tracker = {"seen_streak": 0, "last_handled_t": 0.0}
+    tracker = {"seen_streak": 0, "cooldown_until": 0.0}
 
     def _on_tick() -> Optional[str]:
         if ctx.is_stopped() or not vision.is_available():
             return None
         now = time.monotonic()
-        if (now - tracker["last_handled_t"]) < cooldown_sec:
+        if now < tracker["cooldown_until"]:
             return None
 
         has_confetti, _, center = vision.detect_latest()
@@ -61,23 +61,44 @@ def _make_confetti_tick(
             tracker["seen_streak"] += 1
             if tracker["seen_streak"] >= 2:
                 tracker["seen_streak"] = 0
+                pre_color = (
+                    vision.get_latest_color(recent_fallback_sec=1.0)
+                    if hasattr(vision, "get_latest_color")
+                    else None
+                )
                 ctx.robot.stop()
                 ctx.set_substate(f"偵測到紙屑 (X={center.x:.1f}%, Y={center.y:.1f}%)，切換視覺對準...")
-                aligned, final_yaw = align_to_confetti(ctx, vision)
+                aligned, final_yaw = align_to_confetti(
+                    ctx,
+                    vision=vision,
+                )
                 if ctx.is_stopped():
                     return None
+                handled_color = (
+                    vision.get_latest_color(recent_fallback_sec=2.5)
+                    if hasattr(vision, "get_latest_color")
+                    else None
+                ) or pre_color
                 if aligned:
                     sweep_and_vacuum(
                         ctx,
                         heading_yaw=final_yaw,
-                        speed=85,
-                        amp_deg=20.0,
-                        period_ms=1800,
+                        speed=15,
+                        amp_deg=35.0,
+                        period_ms=1200,
                         stop_front_cm=stop_front_cm,
-                        duration_sec=4.0,
-                        disable_safety=True,
+                        duration_sec=6.0,
+                        disable_safety=False,
+                        vision=vision,
+                        detected_color=handled_color,
                     )
-                tracker["last_handled_t"] = time.monotonic()
+                post_color = (
+                    vision.get_latest_color(recent_fallback_sec=4.0)
+                    if hasattr(vision, "get_latest_color")
+                    else None
+                ) or handled_color
+                active_cooldown = max(cooldown_sec, 5.0) if post_color == "red" else cooldown_sec
+                tracker["cooldown_until"] = time.monotonic() + active_cooldown
                 return "CONFETTI_HANDLED"
         else:
             tracker["seen_streak"] = 0
@@ -87,13 +108,13 @@ def _make_confetti_tick(
 
 
 def build_arena_strategy(
-    cruise_speed: int = 130,
+    cruise_speed: int = 60,
     wall_speed: int = 120,
     entry_speed: int = 140,
     entry_duration_sec: float = 3.0,
-    center_stop_cm: float = 150.0,
+    center_stop_cm: float = 175.0,
     wall_dist_cm: float = 15.0,
-    stop_dist_cm: float = 15.0,
+    stop_dist_cm: float = 60.0,
     right_open_cm: float = 100.0,
 ) -> List[StrategyStep]:
     """

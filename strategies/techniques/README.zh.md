@@ -70,11 +70,12 @@ Arduino 韌體預設開啟前方 `150 mm`（15 cm）硬體極限防撞（`E-Stop
 ### 2.3 影像紙屑辨識與對準（[vision_align.py](file:///home/group6/mechatronics-4/strategies/techniques/vision_align.py)）
 
 #### (1) `VisionSource`
-* **功能**：非同步擷取最新影像影格並執行 [ConfettiDetector](file:///home/group6/mechatronics-4/frame_recognize/confetti_detector.py)，提供零阻塞的 `detect_latest() -> (has_confetti, bbox, center)` 查詢。
+* **功能**：非同步擷取最新影像影格並執行 [ConfettiDetector](file:///home/group6/mechatronics-4/frame_recognize/confetti_detector.py)，提供零阻塞的 `detect_latest() -> (has_confetti, bbox, center)`、`detect_latest_color() -> (has_confetti, bbox, center, color)` 與 `get_latest_color(recent_fallback_sec=0.0)` 查詢。
 * **原理**：
   * **實車模式**：背景執行緒以 `cv2.CAP_FFMPEG` 讀取 `rtsp://localhost:8554/live/stream`（並設 `CAP_PROP_BUFFERSIZE = 1`），避免與 [start.sh](file:///home/group6/mechatronics-4/start.sh) 的 `ffmpeg` 推流程序搶奪 `/dev/logi_camera` 裝置，同時不斷消費緩衝區確保不拿到過時舊影格。
   * **模擬模式 (`frame_provider`)**：傳入 `robot.get_injected_frame` 後改由記憶體直接讀取 `/sim` 網頁餵入的影格並交給真實 `ConfettiDetector` 運算。
   * 任何超過 `3.0s` 未更新的影格會自動標記過期並回傳 `(False, None, None)`，防止依據舊影像誤動作。
+  * 同時記錄主要紙屑顏色（`"red"` / `"green"` / `"blue"`）與剛對準進入車底盲區前的最後顏色記憶，供吸塵前判斷使用。
 
 #### (2) `align_to_confetti(ctx, vision, center_tolerance_x=8.0, target_y_pct=68.0, approach_speed=85, align_gain=0.45, max_duration_sec=8.0, lost_timeout_sec=0.8) -> (bool, float)`
 * **功能**：依 `ConfettiDetector` 回傳的百分比座標 `(0.0% ~ 100.0%)` 引導車體正對並靠近紙屑群組中心。
@@ -87,13 +88,14 @@ Arduino 韌體預設開啟前方 `150 mm`（15 cm）硬體極限防撞（`E-Stop
 
 ### 2.4 擺頭紙屑吸取（[vacuum_sweep.py](file:///home/group6/mechatronics-4/strategies/techniques/vacuum_sweep.py)）
 
-#### `sweep_and_vacuum(ctx, heading_yaw, speed=85, amp_deg=20.0, period_ms=1800, stop_front_cm=15.0, duration_sec=4.0, disable_safety=True) -> bool`
-* **功能**：以指定的前進速度、擺頭週期與振幅邊擺動車頭邊開啟吸塵馬達清掃。
+#### `sweep_and_vacuum(ctx, heading_yaw, speed=85, amp_deg=20.0, period_ms=1800, stop_front_cm=15.0, duration_sec=4.0, disable_safety=True, vision=None, detected_color=None, skip_colors=("red",), skip_wait_sec=3.0) -> bool`
+* **功能**：在啟動吸塵與擺頭前先確認紙屑顏色；若為紅色則略過吸取、給出提示並等待 `3.0s` 後進入下個區段，其他顏色（如綠色、藍色）則照常開啟吸塵馬達與動態擺頭邊走邊清掃。
 * **控制原理**：
-  1. 透過 `ctx.temporarily_disable_safety()` 暫時解除近距離防撞，避免貼近吸塵時誤停。
-  2. 依序開啟吸塵繼電器 `set_vacuum(True)`、啟動 Arduino 動態正弦擺頭 `set_sweep(True, amp_deg, period_ms)` 與前進航向 `set_heading(heading_yaw, speed)`。
-  3. 在軟體層持續監控 `front_cm <= stop_front_cm`（確保擺頭前進時仍不會撞牆）與清掃時間 `duration_sec`。
-  4. **資源與馬達收尾保證**：放在 `try ... finally` 區塊中，確保結束、逾時或按下緊急停止時一定關閉擺頭、關閉吸塵繼電器、煞停並恢復硬體防撞門檻。
+  1. **清掃前顏色判定**：若傳入 `vision` 或 `detected_color`，優先讀取即時影像顏色（必要時短暫輪詢 `0.4s`，或採用剛進入吸口盲區前的近期記憶顏色）。若顏色為 `red`（屬於 `skip_colors`），保持吸塵與擺頭關閉，透過 `set_substate()` 提示並以可中斷休眠 `ctx.sleep(skip_wait_sec)` 等待 `3.0s` 後直接回傳 `True`。
+  2. 透過 `ctx.temporarily_disable_safety()`（若 `disable_safety=True`）暫時解除近距離防撞，避免貼近吸塵時誤停。
+  3. 依序開啟吸塵繼電器 `set_vacuum(True)`、啟動 Arduino 動態正弦擺頭 `set_sweep(True, amp_deg, period_ms)` 與前進航向 `set_heading(heading_yaw, speed)`。
+  4. 在軟體層持續監控 `front_cm <= stop_front_cm`（確保擺頭前進時仍不會撞牆）與清掃時間 `duration_sec`。
+  5. **資源與馬達收尾保證**：放在 `try ... finally` 區塊中，確保結束、逾時或按下緊急停止時一定關閉擺頭、關閉吸塵繼電器、煞停並恢復硬體防撞門檻。
 
 ---
 

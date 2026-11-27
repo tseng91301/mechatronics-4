@@ -341,12 +341,13 @@ def _decode_and_inject_frame(image_base64: str) -> dict:
     if detector is None:
         return {"success": True, "has_confetti": False, "bbox": None, "center": None}
 
-    has_c, bbox, center = detector.detect(frame)
+    res = detector.process(frame)
     return {
         "success": True,
-        "has_confetti": bool(has_c),
-        "bbox": bbox.to_dict() if bbox is not None else None,
-        "center": center.to_dict() if center is not None else None,
+        "has_confetti": bool(res.has_confetti),
+        "color": res.color,
+        "bbox": res.bbox.to_dict() if res.bbox is not None else None,
+        "center": res.center.to_dict() if res.center is not None else None,
     }
 
 

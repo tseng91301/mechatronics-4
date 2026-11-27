@@ -58,6 +58,7 @@ This module encapsulates reusable, interruptible, thread-safe **atomic motion, n
 * **Real Mode**: Captures frames from `rtsp://localhost:8554/live/stream` (`cv2.CAP_FFMPEG`, `CAP_PROP_BUFFERSIZE = 1`) in a background thread so it never conflicts with `ffmpeg` holding `/dev/logi_camera`.
 * **Mock Mode (`frame_provider`)**: Reads injected BGR frames from `robot.get_injected_frame` and feeds them through the exact same `ConfettiDetector`.
 * Frames older than `3.0 s` expire automatically (`detect_latest()` returns `(False, None, None)`).
+* Tracks the dominant confetti color (`"red"` / `"green"` / `"blue"`) via `detect_latest_color()` and `get_latest_color(recent_fallback_sec=...)` so sweeping steps can classify the target even if it just entered the under-chassis blind zone.
 
 #### (2) `align_to_confetti(ctx, vision, center_tolerance_x=8.0, target_y_pct=68.0, approach_speed=85, align_gain=0.45, max_duration_sec=8.0, lost_timeout_sec=0.8) -> (bool, float)`
 * **Two-Stage Percentage Visual Servoing**:
@@ -69,8 +70,9 @@ This module encapsulates reusable, interruptible, thread-safe **atomic motion, n
 
 ### 2.4 Vacuum Sweep ([vacuum_sweep.py](vacuum_sweep.py))
 
-#### `sweep_and_vacuum(ctx, heading_yaw, speed=85, amp_deg=20.0, period_ms=1800, stop_front_cm=15.0, duration_sec=4.0, disable_safety=True) -> bool`
-* Temporarily disables hardware E-Stop (`temporarily_disable_safety()`), activates vacuum relay (`set_vacuum(True)`), enables sinusoidal sweeping (`set_sweep(True, amp_deg, period_ms)`), and creeps forward until `duration_sec` elapses or `front_cm <= stop_front_cm`.
+#### `sweep_and_vacuum(ctx, heading_yaw, speed=85, amp_deg=20.0, period_ms=1800, stop_front_cm=15.0, duration_sec=4.0, disable_safety=True, vision=None, detected_color=None, skip_colors=("red",), skip_wait_sec=3.0) -> bool`
+* Resolves the confetti color before activating the vacuum/sweep (polling live `vision` first, with fallback to recent pre-blind-zone detection or `detected_color`). If the color is in `skip_colors` (`"red"` by default), leaves vacuum/sweep off, posts a prompt via `set_substate()`, waits `skip_wait_sec` (`3.0 s`) interruptibly, and returns `True` to move on to the next section.
+* For other colors (or when no color check is attached), proceeds normally: optionally disables hardware E-Stop (`temporarily_disable_safety()`), activates vacuum relay (`set_vacuum(True)`), enables sinusoidal sweeping (`set_sweep(True, amp_deg, period_ms)`), and creeps forward until `duration_sec` elapses or `front_cm <= stop_front_cm`.
 * Wrapped in `try ... finally` to guarantee disabling sweep, vacuum, and motors on completion or abort.
 
 ---

@@ -11,9 +11,13 @@
 ```text
 strategies/
 ├── __init__.py                 # 匯出 ARENA_STEPS, build_arena_strategy, StrategyRunner
+├── README.md                   # 英文版策略說明文件
 ├── README.zh.md                # 本文件：策略架構說明與新策略建立教學
 ├── arena_strategy.md           # 場地清掃策略規格書（原 STRATEGY.md）
 ├── arena_strategy.py           # 主策略實作（16 步驟場地清掃流程）
+├── confetti_align_strategy.py  # 單純紙屑視覺對準測試策略（1 步驟對準）
+├── confetti_clean_strategy.py  # 單純紙屑視覺對準與吸取策略（2 步驟對準＋擺頭吸塵）
+├── registry.py                 # 策略自動探索與動態註冊模組
 ├── runner.py                   # 策略執行引擎（支援任意步驟啟動、即時停止、單步除錯與狀態推播）
 └── techniques/                 # 底層可重用組合技函式庫
     ├── __init__.py

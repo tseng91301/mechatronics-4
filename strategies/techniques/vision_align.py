@@ -9,7 +9,7 @@ import os
 import sys
 import threading
 import time
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from .context import StrategyContext, clamp, wrap_angle_deg
 
@@ -59,6 +59,9 @@ class VisionSource:
             None,
             None,
         )
+        self._latest_color: Optional[str] = None
+        self._last_seen_color: Optional[str] = None
+        self._last_seen_color_time: float = 0.0
         self._last_detect_time = 0.0
         self._available = False
 
@@ -89,6 +92,8 @@ class VisionSource:
         self._thread = None
         with self._lock:
             self._available = False
+            self._latest_color = None
+            self._last_seen_color = None
 
     def __enter__(self):
         self.start()
@@ -106,9 +111,13 @@ class VisionSource:
         now = time.monotonic()
         if self._detector is not None and (now - self._last_detect_time) >= self.detect_interval:
             try:
-                has_confetti, bbox, center = self._detector.detect(frame)
+                res = self._detector.process(frame, visualize=False)
                 with self._lock:
-                    self._latest_result = (bool(has_confetti), bbox, center)
+                    self._latest_result = (bool(res.has_confetti), res.bbox, res.center)
+                    self._latest_color = res.color if res.has_confetti else None
+                    if res.has_confetti and res.color:
+                        self._last_seen_color = res.color
+                        self._last_seen_color_time = now
                     self._last_detect_time = now
             except Exception:
                 pass
@@ -173,13 +182,50 @@ class VisionSource:
                 return (False, None, None)
             return self._latest_result
 
+    def detect_latest_color(
+        self,
+    ) -> Tuple[bool, Optional["ConfettiBBox"], Optional["ConfettiCenter"], Optional[str]]:
+        """
+        取得最新影像偵測結果與主要紙屑顏色: (has_confetti, bbox, center, color)。
+        color 可能為 'red' | 'green' | 'blue' | None。
+        """
+        if not self.is_supported():
+            return (False, None, None, None)
+        with self._lock:
+            if not self._available or (time.monotonic() - self._latest_frame_time > 3.0):
+                return (False, None, None, None)
+            has_c, bbox, center = self._latest_result
+            return (has_c, bbox, center, self._latest_color if has_c else None)
+
+    def get_latest_color(self, recent_fallback_sec: float = 0.0) -> Optional[str]:
+        """
+        取得目前偵測到的主要紙屑顏色 ('red' / 'green' / 'blue' / None)。
+        若最新影格剛好未偵測到（例如剛進入車底吸口盲區），且設定 recent_fallback_sec > 0，
+        則回傳在該秒數內最後一次看到的紙屑顏色。
+        """
+        if not self.is_supported():
+            return None
+        now = time.monotonic()
+        with self._lock:
+            if not self._available or (now - self._latest_frame_time > 3.0):
+                return None
+            if self._latest_result[0] and self._latest_color:
+                return self._latest_color
+            if (
+                recent_fallback_sec > 0
+                and self._last_seen_color is not None
+                and (now - self._last_seen_color_time) <= recent_fallback_sec
+            ):
+                return self._last_seen_color
+            return None
+
 
 def align_to_confetti(
     ctx: StrategyContext,
     vision: VisionSource,
     center_tolerance_x: float = 8.0,
-    target_y_pct: float = 68.0,
-    approach_speed: int = 85,
+    target_y_pct: float = 40.0,
+    approach_speed: int = 30,
     align_gain: float = 0.45,
     max_duration_sec: float = 8.0,
     lost_timeout_sec: float = 0.8,
