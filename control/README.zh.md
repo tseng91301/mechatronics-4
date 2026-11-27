@@ -1,5 +1,7 @@
 # 車輛控制核心與 Web 後端服務模組 (`control/`)
 
+> 語言：**繁體中文** | [English](README.md)
+
 本目錄負責機器人上位機的**底層硬體通訊控制 (`RobotController`)**、**FastAPI Web 控制後端 (`server.py`)**、**三大網頁介面 (`/`、`/sim`、`/legacy`)** 與 **CLI 除錯工具 (`test_connection.py`)**。
 
 ---

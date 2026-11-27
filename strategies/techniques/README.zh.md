@@ -1,6 +1,8 @@
 # 策略組合技模組 (`strategies/techniques/`) 詳細說明與開發指南
 
-本目錄存放可供各種自動任務策略重複呼叫的**原子動作與感測器閉迴路組合技（Techniques）**，將底層硬體命令 [RobotController](file:///home/group6/mechatronics-4/control/robot_controller.py) 與影像模組 [confetti_detector.py](file:///home/group6/mechatronics-4/frame_recognize/confetti_detector.py) 封裝為可中斷、執行緒安全且易於組合的函式。
+> 語言：**繁體中文** | [English](README.md)
+
+本目錄存放可供各種自動任務策略重複呼叫的**原子動作與感測器閉迴路組合技（Techniques）**，將底層硬體命令 [RobotController](../../control/robot_controller.py) 與影像模組 [confetti_detector.py](../../frame_recognize/confetti_detector.py) 封裝為可中斷、執行緒安全且易於組合的函式。
 
 ---
 

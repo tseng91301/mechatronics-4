@@ -1,6 +1,8 @@
 # 自動任務策略模組 (`strategies/`) 架構與開發指南
 
-本目錄負責管理機器人的**高階自主任務流程（Strategy）**、**可重用組合技（Techniques）**與**背景執行引擎（StrategyRunner）**，並無縫串接底層車輛控制介面 [RobotController](file:///home/group6/mechatronics-4/control/robot_controller.py) 與網頁控制台。
+> 語言：**繁體中文** | [English](README.md)
+
+本目錄負責管理機器人的**高階自主任務流程（Strategy）**、**可重用組合技（Techniques）**與**背景執行引擎（StrategyRunner）**，並無縫串接底層車輛控制介面 [RobotController](../control/robot_controller.py) 與網頁控制台。
 
 ---
 

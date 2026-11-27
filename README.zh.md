@@ -1,5 +1,7 @@
 # Mechatronics-4 機電整合自走清潔機器人系統
 
+> 語言：**繁體中文** | [English](README.md)
+
 本專案為結合 **Raspberry Pi 4B**（上位機策略決策、OpenCV 影像辨識與 Web 控制台）與 **Arduino UNO R3**（底層馬達驅動、IMU 姿態解算、超音波測距與硬體安全保護）的自走清潔機器人平台。系統同時支援**手動遠端遙控**、**Python API 控制**、**多策略自動巡航與單步除錯**，以及**無硬體 `/sim` 模擬器測試**。
 
 > 系統硬體接線與資料流方塊圖請參閱：[BLOCK_DIAGRAM.md](BLOCK_DIAGRAM.md)；版本變更紀錄請參閱：[CHANGELOG.zh.md](CHANGELOG.zh.md)。

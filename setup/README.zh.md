@@ -1,5 +1,7 @@
 # 系統環境初始化與攝影機設定指南 (`setup/`)
 
+> 語言：**繁體中文** | [English](README.md)
+
 本文件說明如何在 **Raspberry Pi 4B** 上初始化共用的 Python 虛擬環境，以及設定 USB 攝影機固定裝置代號與 MediaMTX 影像串流伺服器。
 
 ---

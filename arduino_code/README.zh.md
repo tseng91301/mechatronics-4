@@ -1,5 +1,7 @@
 # Arduino UNO 底層韌體模組 (`arduino_code/`)
 
+> 語言：**繁體中文** | [English](README.md)
+
 本目錄存放運行於 **Arduino UNO R3** 的底層馬達驅動、感測器讀取、IMU 閉迴路控制與序列埠通訊韌體（採用 **PlatformIO** 開發與編譯）。
 
 ---
